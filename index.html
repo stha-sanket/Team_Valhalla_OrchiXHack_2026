@@ -7,7 +7,7 @@
 <title>Hackathon AR Pathfinder</title>
 
 <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-<script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/ar.js@2.2.2/aframe/build/aframe-ar.min.js"></script>
 
 <style>
   :root{
@@ -19,6 +19,7 @@
     --ok: #5fb87a;
     --warn: #e0a527;
     --bad: #d96b5e;
+    --panel: #1d1913;
   }
   *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body{
@@ -27,6 +28,7 @@
     font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   }
   a-scene{ position:absolute; inset:0; z-index:1; }
+  a-scene.hidden{ display:none; }
 
   /* ---------- Gate ---------- */
   #gate{
@@ -45,7 +47,8 @@
     box-shadow:0 8px 24px rgba(224,165,39,0.35);
   }
   #startBtn:active{ transform:scale(0.97); }
-  #gateError{ margin-top:18px; color:#f0a5a5; font-size:13px; max-width:320px; display:none; }
+  #startBtn:disabled{ opacity:0.4; }
+  #gateError{ margin-top:18px; color:#f0a5a5; font-size:13px; max-width:320px; display:none; white-space:pre-line; }
 
   /* ---------- Loading ---------- */
   #loading{
@@ -75,23 +78,25 @@
   }
   #reverseBtn{
     padding:11px 14px; border-radius:10px; border:none; font-weight:600; cursor:pointer;
-    background:rgba(255,255,255,0.1); color:var(--paper); font-size:14px;
+    background:rgba(255,255,255,0.1); color:var(--paper); font-size:14px; white-space:nowrap;
   }
   #reverseBtn.active{ background:var(--marigold); color:#241705; }
 
-  /* ---------- Progress strip ---------- */
-  #progress{
+  /* ---------- GPS status strip (always visible once running) ---------- */
+  #gpsStrip{
     position:fixed; top:64px; left:12px; right:12px; z-index:20;
     display:flex; align-items:center; gap:8px;
   }
-  #progressBar{
-    flex:1; height:5px; border-radius:999px; background:rgba(255,255,255,0.12); overflow:hidden;
+  #accBadge{
+    padding:4px 9px; border-radius:999px; font-size:11px; font-weight:700; white-space:nowrap;
   }
-  #progressFill{
-    height:100%; background:linear-gradient(90deg,var(--copper),var(--marigold)); width:0%;
-    transition:width 0.3s ease;
-  }
-  #progressLabel{ font-size:11.5px; color:#c9c2b3; white-space:nowrap; }
+  #accBadge.good{ background:rgba(95,184,122,0.2); color:var(--ok); }
+  #accBadge.ok{ background:rgba(224,165,39,0.2); color:var(--marigold); }
+  #accBadge.bad{ background:rgba(217,107,94,0.2); color:var(--bad); }
+  #accBadge.none{ background:rgba(255,255,255,0.1); color:#a89f8c; }
+  #progressBar{ flex:1; height:5px; border-radius:999px; background:rgba(255,255,255,0.12); overflow:hidden; }
+  #progressFill{ height:100%; background:linear-gradient(90deg,var(--copper),var(--marigold)); width:0%; transition:width 0.3s ease; }
+  #progressLabel{ font-size:11px; color:#c9c2b3; white-space:nowrap; }
 
   #calibrateBanner{
     position:fixed; top:96px; left:12px; right:12px; z-index:21;
@@ -101,13 +106,30 @@
   }
   #calibrateBanner.show{ display:block; }
 
-  /* ---------- HUD ---------- */
+  #suppressBanner{
+    position:fixed; top:96px; left:12px; right:12px; z-index:21;
+    background:rgba(224,165,39,0.16); border:1px solid rgba(224,165,39,0.4);
+    color:var(--marigold); font-size:12px; padding:8px 12px; border-radius:10px;
+    display:none; text-align:center;
+  }
+  #suppressBanner.show{ display:block; }
+
+  #arModeNote{
+    position:fixed; top:96px; left:12px; right:12px; z-index:21;
+    background:rgba(217,107,94,0.14); border:1px solid rgba(217,107,94,0.35);
+    color:var(--bad); font-size:11.5px; padding:7px 12px; border-radius:10px;
+    display:none; text-align:center;
+  }
+  #arModeNote.show{ display:block; }
+
+  /* ---------- HUD (navigating state) ---------- */
   #hud{
     position:fixed; left:0; right:0; bottom:0; z-index:15;
     display:flex; flex-direction:column; align-items:center;
     padding: 18px 16px max(18px, env(safe-area-inset-bottom));
     background:linear-gradient(transparent, rgba(0,0,0,0.78) 55%);
   }
+  #hud.hidden{ display:none; }
   #compassWrap{
     width:150px; height:150px; border-radius:50%;
     background:radial-gradient(circle at 50% 40%, rgba(224,165,39,0.14), rgba(0,0,0,0.35));
@@ -116,31 +138,51 @@
     position:relative; margin-bottom:10px;
   }
   #arrowSvg{ width:88px; height:88px; transition: transform 0.15s linear; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5)); }
-  #arrivedBadge{
-    position:absolute; inset:0; border-radius:50%;
-    display:flex; align-items:center; justify-content:center;
-    font-size:28px; opacity:0; transition:opacity 0.3s;
-  }
-  #arrivedBadge.show{ opacity:1; }
   #distText{ font-size:22px; font-weight:700; color:var(--paper); }
   #legText{ font-size:13px; color:var(--marigold); margin-top:2px; text-transform:uppercase; letter-spacing:0.1em; text-align:center; }
   #totalRemainText{ font-size:11.5px; color:#a89f8c; margin-top:4px; }
+  #debugText{ font-size:10.5px; color:#6b6558; margin-top:3px; text-align:center; }
 
-  #navButtons{ display:flex; gap:10px; margin-top:14px; width:100%; max-width:280px; }
+  #navButtons{ display:flex; gap:8px; margin-top:14px; width:100%; max-width:320px; }
   .navBtn{
-    flex:1; padding:11px; border-radius:10px; border:none; font-size:13px; font-weight:600; cursor:pointer;
+    flex:1; padding:11px 6px; border-radius:10px; border:none; font-size:12.5px; font-weight:600; cursor:pointer;
     background:rgba(255,255,255,0.1); color:var(--paper);
   }
   .navBtn:active{ transform:scale(0.97); }
   .navBtn.primary{ background:var(--marigold); color:#241705; }
   .navBtn:disabled{ opacity:0.35; }
 
-  #headingBadge{
-    position:fixed; top:64px; right:12px; z-index:20;
-    background:rgba(20,17,13,0.75); border:1px solid rgba(255,255,255,0.12);
-    border-radius:10px; padding:5px 9px; font-size:10.5px; color:#c9c2b3;
-    display:none;
+  /* ---------- Confirm / media card (arrival state) ---------- */
+  #cardOverlay{
+    position:fixed; inset:0; z-index:60;
+    display:none; align-items:flex-end; justify-content:center;
+    background:rgba(0,0,0,0.55);
   }
+  #cardOverlay.show{ display:flex; }
+  #arrivalCard{
+    width:100%; max-width:480px; background:var(--panel);
+    border-radius:20px 20px 0 0; padding:22px 22px max(22px, env(safe-area-inset-bottom));
+    border:1px solid rgba(255,255,255,0.08); border-bottom:none;
+    animation: slideUp 0.25s ease;
+  }
+  @keyframes slideUp{ from{ transform:translateY(30px); opacity:0; } to{ transform:translateY(0); opacity:1; } }
+  #cardKicker{ color:var(--marigold); font-size:11px; letter-spacing:0.18em; text-transform:uppercase; font-weight:700; }
+  #cardTitle{ font-size:20px; font-weight:700; margin:6px 0 10px; }
+  #cardMedia{
+    width:100%; aspect-ratio:16/9; border-radius:12px; margin-bottom:12px;
+    background:linear-gradient(135deg, rgba(224,165,39,0.15), rgba(122,46,46,0.25));
+    display:flex; align-items:center; justify-content:center; overflow:hidden;
+  }
+  #cardMedia img{ width:100%; height:100%; object-fit:cover; }
+  #cardMedia .placeholder{ font-size:34px; opacity:0.5; }
+  #cardDesc{ font-size:14px; color:#c9c2b3; line-height:1.5; margin-bottom:18px; }
+  #cardButtons{ display:flex; gap:10px; }
+  .cardBtn{
+    flex:1; padding:14px; border-radius:12px; border:none; font-size:14.5px; font-weight:700; cursor:pointer;
+  }
+  .cardBtn.yes{ background:var(--marigold); color:#241705; }
+  .cardBtn.no{ background:rgba(217,107,94,0.15); color:var(--bad); }
+  .cardBtn.continue{ background:var(--marigold); color:#241705; width:100%; }
 </style>
 </head>
 
@@ -149,7 +191,7 @@
   <div id="gate">
     <div class="eyebrow">Hackathon Venue</div>
     <h1>AR Pathfinder</h1>
-    <p>Follow the arrow leg-by-leg through the real waypoints of your venue. Needs your location and compass.</p>
+    <p>Follow the arrow one stop at a time. When you arrive, confirm the spot before moving on.</p>
     <button id="startBtn">Start Navigating</button>
     <div id="gateError"></div>
   </div>
@@ -164,12 +206,14 @@
     <button id="reverseBtn">⇄ Reverse</button>
   </div>
 
-  <div id="progress">
+  <div id="gpsStrip">
+    <span id="accBadge" class="none">no fix</span>
     <div id="progressBar"><div id="progressFill"></div></div>
-    <div id="progressLabel">0 / 0</div>
+    <span id="progressLabel">0 / 0</span>
   </div>
   <div id="calibrateBanner">↺ Wave your phone in a figure-8 to calibrate the compass</div>
-  <div id="headingBadge">hdg —°</div>
+  <div id="suppressBanner">⏸ Auto-arrival paused for this stop — walk ~9m away and back, or tap "I'm here"</div>
+  <div id="arModeNote">AR camera view unavailable — running in compass-only mode</div>
 
   <div id="hud">
     <div id="compassWrap">
@@ -183,18 +227,34 @@
         <polygon points="50,6 78,62 50,48 22,62" fill="url(#arrowGrad)" stroke="#241705" stroke-width="2" stroke-linejoin="round"/>
         <circle cx="50" cy="70" r="9" fill="#241705" opacity="0.55"/>
       </svg>
-      <div id="arrivedBadge">📍</div>
     </div>
     <div id="distText">— m</div>
     <div id="legText">Loading route…</div>
     <div id="totalRemainText"></div>
+    <div id="debugText"></div>
     <div id="navButtons">
-      <button class="navBtn" id="prevBtn">← Back</button>
-      <button class="navBtn primary" id="nextBtn">Skip →</button>
+      <button class="navBtn" id="prevBtn" aria-label="Go back to previous stop">← Back</button>
+      <button class="navBtn" id="hereBtn" aria-label="Mark current location as arrived">I'm here</button>
+      <button class="navBtn primary" id="skipBtn" aria-label="Skip to next stop">Skip →</button>
     </div>
   </div>
 
-  <a-scene
+  <!-- ============================================================ -->
+  <!-- ARRIVAL CARD: shown when GPS thinks you've arrived (or you    -->
+  <!-- tap "I'm here"). Waypoints need Yes/No confirmation before    -->
+  <!-- advancing; media-only stops just need an acknowledgement.     -->
+  <!-- ============================================================ -->
+  <div id="cardOverlay">
+    <div id="arrivalCard">
+      <div id="cardKicker">You've arrived</div>
+      <div id="cardTitle"></div>
+      <div id="cardMedia"><span class="placeholder">🖼️</span></div>
+      <div id="cardDesc"></div>
+      <div id="cardButtons"></div>
+    </div>
+  </div>
+
+  <a-scene id="arScene"
     vr-mode-ui="enabled: false"
     arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;"
     embedded
@@ -221,8 +281,6 @@
     <a-entity id="destinationLabel" position="0 2.1 0" look-at="[gps-new-camera]">
       <a-text id="destText" value="" color="#f4ecdc" align="center" scale="3.4 3.4 3.4" font="mozillavr"></a-text>
     </a-entity>
-
-    <a-entity id="pathContainer"></a-entity>
   </a-scene>
 
 <script>
@@ -230,34 +288,74 @@
   "use strict";
 
   // ============================================================
-  // ROUTE DATA — real captured venue coordinates.
-  // Add more routes to this object the same way (paste more
-  // JSON from the waypoint logger tool as new keys).
+  // 1. RAW DATA — your schema, verbatim shape.
+  //    Add more stops (any place_id) and they'll show up as a
+  //    new route automatically.
   // ============================================================
-  const ROUTES = {
-    "Valhalla": {
-      route_name: "Valhalla",
-      waypoints: [
-        { label: "Team Valhalla",       lat: 27.7019804, lng: 85.3484771 },
-        { label: "Doorway to Valhalla", lat: 27.702012,  lng: 85.3484743 },
-        { label: "Main door",           lat: 27.7020255, lng: 85.3484847 },
-        { label: "Football court",      lat: 27.7020618, lng: 85.3482863 },
-        { label: "Main gate",           lat: 27.7020056, lng: 85.3482352 }
-      ]
-    }
-  };
+  const RAW_PATHS = [
+    { coordinates:{lat:"27.7019507",long:"85.3484578"}, description:"Location for Team Valhalla.", type:"waypoint", title:"Team Valhalla", index:0, id:"team_valhalla", visiting_place_id:"Valhalla", media:"link" },
+    { coordinates:{lat:"27.7019851",long:"85.3484226"}, description:"Location for Doorway to valhalla.", type:"waypoint", title:"Doorway to valhalla", index:1, id:"doorway_to_valhalla", visiting_place_id:"Valhalla", media:"link" },
+    { coordinates:{lat:"27.7020146",long:"85.3484233"}, description:"Location for Main door.", type:"waypoint", title:"Main door", index:2, id:"main_door", visiting_place_id:"Valhalla", media:"link" },
+    { coordinates:{lat:"27.7020684",long:"85.3483363"}, description:"Location for Futsal court entrance.", type:"waypoint", title:"Futsal court entrance", index:3, id:"futsal_court_entrance", visiting_place_id:"Valhalla", media:"link" },
+    { coordinates:{lat:"27.7020506",long:"85.3482959"}, description:"Location for Main gate.", type:"waypoint", title:"Main gate", index:4, id:"main_gate", visiting_place_id:"Valhalla", media:"link" }
+  ];
 
-  // Arrival tuning: two-condition auto-advance, see chat explanation.
-  const ARRIVAL_RADIUS_M = 6;
+  // Group by visiting_place_id -> sorted stop list. This is what
+  // makes it easy to paste in more routes later: same schema, new
+  // visiting_place_id, they show up in the route dropdown for free.
+  function buildRoutes(rawPaths){
+    const byPlace = {};
+    rawPaths.forEach(p => {
+      const key = p.visiting_place_id;
+      if (!byPlace[key]) byPlace[key] = [];
+      byPlace[key].push({
+        id: p.id,
+        title: p.title,
+        description: p.description,
+        type: p.type,               // "waypoint" | "media"
+        media: p.media,             // "link" placeholder, or a real URL later
+        index: p.index,
+        lat: parseFloat(p.coordinates.lat),
+        lng: parseFloat(p.coordinates.long)
+      });
+    });
+    Object.values(byPlace).forEach(list => list.sort((a,b) => a.index - b.index));
+    return byPlace;
+  }
 
+  const ROUTES = buildRoutes(RAW_PATHS);
+
+  // Arrival tuning
+  const BASE_ARRIVAL_RADIUS_M = 6;
+  const MAX_ARRIVAL_RADIUS_M = 18; // cap how far a bad GPS fix is allowed to widen the radius
+
+  // Position smoothing tuning (this is what actually buys you accuracy
+  // in a small area — raw single GPS fixes jitter by several meters on
+  // consumer Android phones, which is often *bigger* than the distance
+  // between your waypoints).
+  const POS_HISTORY_MAX = 6;          // how many recent fixes to blend
+  const POS_HISTORY_MAX_AGE_MS = 8000; // drop fixes older than this
+  const OUTLIER_ACC_MULTIPLIER = 3;    // ignore fixes much worse than the best recent one
+  const MIN_ACC_FLOOR_M = 3;           // never trust "accuracy" below this (phones lie)
+
+  // ============================================================
+  // 2. STATE
+  // ============================================================
   let currentRouteKey = Object.keys(ROUTES)[0];
-  let activeWaypoints = ROUTES[currentRouteKey].waypoints.slice();
+  let stops = ROUTES[currentRouteKey].slice();
   let reversed = false;
-  let legIndex = 1; // index into activeWaypoints we are walking TOWARD (0 = origin/start, not a target)
+  let stopIndex = 1;              // position in `stops` we are walking TOWARD (0 = starting point, not a target)
+  let uiState = 'navigating';     // 'navigating' | 'card'
+  let suppressAutoTrigger = false; // set after user taps "No" on a card, cleared once they move away
 
-  let userLat = null, userLng = null;
+  let userLat = null, userLng = null, userAcc = null; // SMOOTHED values, used everywhere below
+  let posHistory = [];            // raw fixes: {lat, lng, acc, t}
   let smoothedHeading = null;
   let firstFixReceived = false;
+  let arSceneUsable = true;
+  let watchId = null;              // so we can clearWatch() and stop draining battery/GPS
+  let lastHudUpdateMs = 0;
+  const HUD_UPDATE_INTERVAL_MS = 80; // ~12fps — orientation events fire up to 60x/sec, no need to redraw that often
 
   // DOM
   const gate = document.getElementById('gate');
@@ -268,19 +366,31 @@
   const distText = document.getElementById('distText');
   const legText = document.getElementById('legText');
   const totalRemainText = document.getElementById('totalRemainText');
-  const arrivedBadge = document.getElementById('arrivedBadge');
-  const headingBadge = document.getElementById('headingBadge');
+  const debugText = document.getElementById('debugText');
+  const accBadge = document.getElementById('accBadge');
   const calibrateBanner = document.getElementById('calibrateBanner');
+  const suppressBanner = document.getElementById('suppressBanner');
+  const arModeNote = document.getElementById('arModeNote');
   const routeSelect = document.getElementById('routeSelect');
   const reverseBtn = document.getElementById('reverseBtn');
   const prevBtn = document.getElementById('prevBtn');
-  const nextBtn = document.getElementById('nextBtn');
+  const hereBtn = document.getElementById('hereBtn');
+  const skipBtn = document.getElementById('skipBtn');
   const progressFill = document.getElementById('progressFill');
   const progressLabel = document.getElementById('progressLabel');
   const destText = document.getElementById('destText');
+  const hud = document.getElementById('hud');
+  const cardOverlay = document.getElementById('cardOverlay');
+  const arrivalCard = document.getElementById('arrivalCard');
+  const cardKicker = document.getElementById('cardKicker');
+  const cardTitle = document.getElementById('cardTitle');
+  const cardMedia = document.getElementById('cardMedia');
+  const cardDesc = document.getElementById('cardDesc');
+  const cardButtons = document.getElementById('cardButtons');
+  const arScene = document.getElementById('arScene');
 
   // ============================================================
-  // GEO MATH
+  // 3. GEO MATH
   // ============================================================
   function toRad(d){ return d * Math.PI / 180; }
 
@@ -300,26 +410,62 @@
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   }
 
+  function effectiveArrivalRadius(){
+    if (userAcc == null) return BASE_ARRIVAL_RADIUS_M;
+    return Math.min(MAX_ARRIVAL_RADIUS_M, Math.max(BASE_ARRIVAL_RADIUS_M, userAcc * 0.6));
+  }
+
+  // ------------------------------------------------------------
+  // Position smoothing: blend the last few GPS fixes, weighted
+  // by how accurate each one claims to be (1/accuracy^2 — the
+  // standard way to combine noisy sensor readings), and throw
+  // out any fix that's a wild outlier compared to recent ones.
+  // This is what lets you tell waypoints apart when they're only
+  // a few meters from each other.
+  // ------------------------------------------------------------
+  function pushRawPosition(lat, lng, acc){
+    const now = Date.now();
+    posHistory.push({ lat, lng, acc: Math.max(acc || 999, MIN_ACC_FLOOR_M), t: now });
+    while (posHistory.length > POS_HISTORY_MAX) posHistory.shift();
+    while (posHistory.length && now - posHistory[0].t > POS_HISTORY_MAX_AGE_MS) posHistory.shift();
+  }
+
+  function computeSmoothedPosition(){
+    if (!posHistory.length) return null;
+    const bestAcc = Math.min(...posHistory.map(p => p.acc));
+    const usable = posHistory.filter(p => p.acc <= bestAcc * OUTLIER_ACC_MULTIPLIER + 10);
+    let wSum = 0, latSum = 0, lngSum = 0;
+    usable.forEach(p => {
+      const w = 1 / (p.acc * p.acc);
+      wSum += w;
+      latSum += p.lat * w;
+      lngSum += p.lng * w;
+    });
+    return { lat: latSum / wSum, lng: lngSum / wSum, acc: bestAcc };
+  }
+
   // ============================================================
-  // ROUTE SETUP
+  // 4. ROUTE / STOP HELPERS
   // ============================================================
   function populateRouteSelect(){
     routeSelect.innerHTML = '';
     Object.keys(ROUTES).forEach(key => {
       const opt = document.createElement('option');
       opt.value = key;
-      opt.textContent = ROUTES[key].route_name;
+      opt.textContent = key;
       routeSelect.appendChild(opt);
     });
   }
 
   function loadRoute(key){
     currentRouteKey = key;
-    const base = ROUTES[key].waypoints;
-    activeWaypoints = reversed ? base.slice().reverse() : base.slice();
-    legIndex = 1;
-    updateArPin();
-    if (userLat != null) drawWaypointTrail();
+    const base = ROUTES[key];
+    stops = reversed ? base.slice().reverse() : base.slice();
+    stopIndex = 1;
+    uiState = 'navigating';
+    suppressAutoTrigger = false;
+    cardOverlay.classList.remove('show');
+    if (arSceneUsable) updateArPin();
     updateHud();
   }
 
@@ -331,139 +477,149 @@
     loadRoute(currentRouteKey);
   });
 
-  // ============================================================
-  // LEG NAVIGATION
-  // ============================================================
-  function currentTarget(){ return activeWaypoints[legIndex]; }
-  function hasNextLeg(){ return legIndex < activeWaypoints.length - 1; }
-  function hasPrevLeg(){ return legIndex > 1; }
+  function currentStop(){ return stops[stopIndex]; }
+  function hasNext(){ return stopIndex < stops.length - 1; }
+  function hasPrev(){ return stopIndex > 1; }
 
-  function advanceLeg(){
-    if (hasNextLeg()){
-      legIndex++;
-      updateArPin();
-      updateHud();
-    }
+  function goToStop(i){
+    stopIndex = i;
+    suppressAutoTrigger = false;
+    uiState = 'navigating';
+    cardOverlay.classList.remove('show');
+    if (arSceneUsable) updateArPin();
+    updateHud();
   }
-  function retreatLeg(){
-    if (hasPrevLeg()){
-      legIndex--;
-      updateArPin();
-      updateHud();
-    }
-  }
-  nextBtn.addEventListener('click', advanceLeg);
-  prevBtn.addEventListener('click', retreatLeg);
+
+  function advance(){ if (hasNext()) goToStop(stopIndex + 1); }
+  function retreat(){ if (hasPrev()) goToStop(stopIndex - 1); }
+
+  prevBtn.addEventListener('click', retreat);
+  skipBtn.addEventListener('click', advance);
+  hereBtn.addEventListener('click', () => openArrivalCardSafe(true));
 
   function remainingRouteDistance(fromLat, fromLng){
-    // distance to current target, plus every full leg after it
-    let d = calculateDistance(fromLat, fromLng, currentTarget().lat, currentTarget().lng);
-    for (let i = legIndex; i < activeWaypoints.length - 1; i++){
-      d += calculateDistance(
-        activeWaypoints[i].lat, activeWaypoints[i].lng,
-        activeWaypoints[i+1].lat, activeWaypoints[i+1].lng
-      );
+    let d = calculateDistance(fromLat, fromLng, currentStop().lat, currentStop().lng);
+    for (let i = stopIndex; i < stops.length - 1; i++){
+      d += calculateDistance(stops[i].lat, stops[i].lng, stops[i+1].lat, stops[i+1].lng);
     }
     return d;
   }
 
   // ============================================================
-  // HUD
+  // 5. ARRIVAL CARD (confirm / media)
+  // ============================================================
+  function openArrivalCardSafe(manual){
+    try{
+      openArrivalCard(manual);
+    } catch(e){
+      // Never let a rendering bug silently swallow an arrival — surface it.
+      console.error('openArrivalCard failed:', e);
+      debugText.textContent = 'Card error: ' + e.message;
+    }
+  }
+
+  function openArrivalCard(manual){
+    const stop = currentStop();
+    uiState = 'card';
+
+    cardKicker.textContent = manual ? "Marked as here" : "You've arrived";
+    cardTitle.textContent = stop.title;
+    cardDesc.textContent = stop.description || '';
+
+    // media: real URL if provided later, otherwise a placeholder icon
+    if (stop.media && /^https?:\/\//.test(stop.media)){
+      cardMedia.innerHTML = `<img src="${stop.media}" alt="${stop.title}">`;
+    } else {
+      cardMedia.innerHTML = `<span class="placeholder">${stop.type === 'media' ? '📖' : '🖼️'}</span>`;
+    }
+
+    cardButtons.innerHTML = '';
+    if (stop.type === 'waypoint'){
+      const yesBtn = document.createElement('button');
+      yesBtn.className = 'cardBtn yes';
+      yesBtn.textContent = 'Yes, this is it →';
+      yesBtn.onclick = () => { cardOverlay.classList.remove('show'); advance(); };
+
+      const noBtn = document.createElement('button');
+      noBtn.className = 'cardBtn no';
+      noBtn.textContent = 'Not quite';
+      noBtn.onclick = () => {
+        cardOverlay.classList.remove('show');
+        uiState = 'navigating';
+        suppressAutoTrigger = true; // don't immediately re-pop the same card from GPS noise
+      };
+
+      cardButtons.appendChild(noBtn);
+      cardButtons.appendChild(yesBtn);
+    } else {
+      const contBtn = document.createElement('button');
+      contBtn.className = 'cardBtn continue';
+      contBtn.textContent = 'Continue →';
+      contBtn.onclick = () => { cardOverlay.classList.remove('show'); advance(); };
+      cardButtons.appendChild(contBtn);
+    }
+
+    cardOverlay.classList.add('show');
+  }
+
+  // ============================================================
+  // 6. HUD / NAV LOOP
   // ============================================================
   function updateHud(){
-    progressLabel.textContent = `${legIndex} / ${activeWaypoints.length - 1}`;
-    progressFill.style.width = `${(legIndex / (activeWaypoints.length - 1)) * 100}%`;
+    progressLabel.textContent = `${stopIndex} / ${stops.length - 1}`;
+    progressFill.style.width = `${(stopIndex / (stops.length - 1)) * 100}%`;
 
-    const target = currentTarget();
-    const isFinal = !hasNextLeg();
-    legText.textContent = isFinal ? `Final: ${target.label}` : `Next: ${target.label}`;
-    prevBtn.disabled = !hasPrevLeg();
-    nextBtn.textContent = isFinal ? 'Skip →' : 'Skip →';
-    nextBtn.disabled = !hasNextLeg();
+    const stop = currentStop();
+    const isFinal = !hasNext();
+    legText.textContent = (isFinal ? 'Final: ' : 'Next: ') + stop.title;
+    prevBtn.disabled = !hasPrev();
+    skipBtn.disabled = !hasNext() && stopIndex === stops.length - 1 && uiState !== 'navigating';
 
+    // suppress-state is now always visible, so it's never a silent lockout
+    suppressBanner.classList.toggle('show', uiState === 'navigating' && suppressAutoTrigger);
+
+    if (uiState !== 'navigating') return; // card is showing — don't fight it with arrow updates
     if (userLat == null || smoothedHeading == null) return;
 
-    const distance = calculateDistance(userLat, userLng, target.lat, target.lng);
-    const bearing = calculateBearing(userLat, userLng, target.lat, target.lng);
+    const distance = calculateDistance(userLat, userLng, stop.lat, stop.lng);
+    const bearing = calculateBearing(userLat, userLng, stop.lat, stop.lng);
     let rel = bearing - smoothedHeading;
     rel = ((rel + 180) % 360 + 360) % 360 - 180;
     arrowSvg.style.transform = `rotate(${rel}deg)`;
 
     const totalRemain = remainingRouteDistance(userLat, userLng);
-    totalRemainText.textContent = isFinal
-      ? ''
-      : `${Math.round(totalRemain)} m to ${activeWaypoints[activeWaypoints.length-1].label}`;
+    // distText above is the distance to the CURRENT target (stop.title, shown in legText).
+    // This line is the separate, full-route total — labelled explicitly so the two numbers aren't confused.
+    totalRemainText.textContent = isFinal ? '' : `${Math.round(totalRemain)} m total to end of route (${stops[stops.length-1].title})`;
 
-    if (distance < ARRIVAL_RADIUS_M){
-      if (isFinal){
-        distText.textContent = "You're here";
-        distText.style.color = '#5fb87a';
-        arrivedBadge.classList.add('show');
-        arrowSvg.style.opacity = '0.25';
-      } else {
-        distText.textContent = `${Math.round(distance)} m`;
-        distText.style.color = '#f4ecdc';
-        arrivedBadge.classList.remove('show');
-        arrowSvg.style.opacity = '1';
-        advanceLeg(); // reached this waypoint — move to the next leg
-        return;
-      }
-    } else {
-      arrivedBadge.classList.remove('show');
-      arrowSvg.style.opacity = '1';
-      distText.style.color = '#f4ecdc';
-      distText.textContent = distance < 1000 ? `${Math.round(distance)} m` : `${(distance/1000).toFixed(2)} km`;
+    distText.textContent = distance < 1000 ? `${Math.round(distance)} m` : `${(distance/1000).toFixed(2)} km`;
 
-      // secondary advance condition: already closer to the next waypoint
-      // than the current one — handles legs shorter than GPS noise
-      if (hasNextLeg()){
-        const nextTarget = activeWaypoints[legIndex + 1];
-        const distToNext = calculateDistance(userLat, userLng, nextTarget.lat, nextTarget.lng);
-        if (distToNext < distance){
-          advanceLeg();
-          return;
-        }
-      }
+    const radius = effectiveArrivalRadius();
+    debugText.textContent = `acc ±${Math.round(userAcc)}m · radius ${Math.round(radius)}m · fixes ${posHistory.length}`;
+
+    if (!suppressAutoTrigger && distance < radius){
+      openArrivalCardSafe(false);
+      return;
     }
-
-    headingBadge.textContent = `hdg ${Math.round(smoothedHeading)}°`;
+    if (distance >= radius * 1.5) suppressAutoTrigger = false;
   }
 
   // ============================================================
-  // AR PIN + trail (bonus visual layer, best-effort)
+  // 7. AR PIN (bonus visual layer — only touched if the scene loaded)
   // ============================================================
   function updateArPin(){
-    const target = currentTarget();
-    const marker = document.getElementById('destinationMarker');
-    const label = document.getElementById('destinationLabel');
-    marker.setAttribute('gps-new-entity-place', `latitude: ${target.lat}; longitude: ${target.lng}`);
-    label.setAttribute('gps-new-entity-place', `latitude: ${target.lat}; longitude: ${target.lng}`);
-    destText.setAttribute('value', target.label);
-  }
-
-  function drawWaypointTrail(){
-    const container = document.getElementById('pathContainer');
-    container.innerHTML = '';
-    // one small marker dot per remaining waypoint on the route (real captured points, not interpolated)
-    for (let i = legIndex; i < activeWaypoints.length; i++){
-      const wp = activeWaypoints[i];
-      const entity = document.createElement('a-entity');
-      entity.setAttribute('gps-new-entity-place', `latitude: ${wp.lat}; longitude: ${wp.lng}`);
-      entity.setAttribute('position', '0 0.1 0');
-
-      const sphere = document.createElement('a-sphere');
-      sphere.setAttribute('radius', '0.12');
-      sphere.setAttribute('color', i === activeWaypoints.length - 1 ? '#7a2e2e' : '#e0a527');
-      sphere.setAttribute('opacity', '0.75');
-      sphere.setAttribute('animation', 'property: scale; from: 1 1 1; to: 1.4 1.4 1.4; dur: 1400; dir: alternate; loop: true; easing: easeInOutSine');
-
-      entity.appendChild(sphere);
-      container.appendChild(entity);
-    }
+    try{
+      const stop = currentStop();
+      const marker = document.getElementById('destinationMarker');
+      const label = document.getElementById('destinationLabel');
+      marker.setAttribute('gps-new-entity-place', `latitude: ${stop.lat}; longitude: ${stop.lng}`);
+      label.setAttribute('gps-new-entity-place', `latitude: ${stop.lat}; longitude: ${stop.lng}`);
+      destText.setAttribute('value', stop.title);
+    } catch(e){ /* AR layer optional — HUD keeps working regardless */ }
   }
 
   // ============================================================
-  // HEADING
+  // 8. HEADING
   // ============================================================
   function applyHeading(rawHeading){
     if (rawHeading == null || isNaN(rawHeading)) return;
@@ -474,7 +630,15 @@
       diff = ((diff + 180) % 360 + 360) % 360 - 180;
       smoothedHeading = (smoothedHeading + 0.15 * diff + 360) % 360;
     }
-    updateHud();
+    requestHudUpdate(); // throttled — orientation fires far faster than the UI needs to redraw
+  }
+
+  function requestHudUpdate(){
+    const now = Date.now();
+    if (now - lastHudUpdateMs >= HUD_UPDATE_INTERVAL_MS){
+      lastHudUpdateMs = now;
+      updateHud();
+    }
   }
 
   function onOrientation(e){
@@ -491,74 +655,140 @@
   }
 
   // ============================================================
-  // GEOLOCATION
+  // 9. GEOLOCATION — with real, distinguishable error states
   // ============================================================
+  function accuracyClass(acc){
+    if (acc == null) return 'none';
+    if (acc <= 10) return 'good';
+    if (acc <= 25) return 'ok';
+    return 'bad';
+  }
+
   function onPosition(pos){
-    userLat = pos.coords.latitude;
-    userLng = pos.coords.longitude;
+    pushRawPosition(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
+    const smoothed = computeSmoothedPosition();
+    if (!smoothed) return;
+
+    userLat = smoothed.lat;
+    userLng = smoothed.lng;
+    userAcc = smoothed.acc;
+
+    accBadge.textContent = `±${Math.round(userAcc)}m`;
+    accBadge.className = accuracyClass(userAcc);
 
     if (!firstFixReceived){
       firstFixReceived = true;
       loading.classList.add('hidden');
-      updateArPin();
-      drawWaypointTrail();
+      if (arSceneUsable) updateArPin();
     }
     updateHud();
   }
 
   function onPositionError(err){
-    loading.querySelector('.msg').textContent =
-      "Couldn't get GPS location (" + err.message + "). Move outdoors / near a window and reload.";
+    accBadge.textContent = 'GPS error';
+    accBadge.className = 'bad';
+    let msg;
+    switch(err.code){
+      case 1: msg = 'Location permission denied. Enable it in your browser/site settings and reload.'; break;
+      case 2: msg = 'Position unavailable — GPS signal not found. Try moving outdoors or near a window.'; break;
+      case 3: msg = 'GPS timed out. Signal may be weak here — hold still or move to open sky.'; break;
+      default: msg = 'Unknown location error: ' + err.message;
+    }
+    loading.classList.remove('hidden');
+    loading.querySelector('.msg').textContent = msg;
   }
 
   // ============================================================
-  // START
+  // 10. AR SCENE availability check — degrade gracefully
+  // ============================================================
+  function checkArSceneUsable(){
+    setTimeout(() => {
+      const hasComponent = window.AFRAME && AFRAME.components && AFRAME.components['gps-new-camera'];
+      if (!hasComponent){
+        arSceneUsable = false;
+        arScene.classList.add('hidden');
+        arModeNote.classList.add('show');
+      }
+    }, 4000);
+  }
+
+  // ============================================================
+  // 11. START
   // ============================================================
   async function start(){
     gateError.style.display = 'none';
+
+    if (!window.isSecureContext){
+      gateError.textContent = 'This needs to be served over HTTPS (or localhost) for GPS/compass access to work.';
+      gateError.style.display = 'block';
+      return;
+    }
+
+    startBtn.disabled = true;
+    startBtn.textContent = 'Requesting permissions…';
 
     try{
       if (typeof DeviceOrientationEvent !== 'undefined' &&
           typeof DeviceOrientationEvent.requestPermission === 'function'){
         const result = await DeviceOrientationEvent.requestPermission();
         if (result !== 'granted'){
-          gateError.textContent = 'Compass permission was denied — the guide arrow needs it to know which way you\'re facing.';
+          gateError.textContent = "Compass permission was denied — the arrow needs it to know which way you're facing.";
           gateError.style.display = 'block';
+          startBtn.disabled = false;
+          startBtn.textContent = 'Start Navigating';
           return;
         }
       }
     } catch(e){
       gateError.textContent = 'Could not request compass permission: ' + e.message;
       gateError.style.display = 'block';
+      startBtn.disabled = false;
+      startBtn.textContent = 'Start Navigating';
       return;
     }
 
     if (!('geolocation' in navigator)){
       gateError.textContent = 'This browser does not support geolocation.';
       gateError.style.display = 'block';
+      startBtn.disabled = false;
+      startBtn.textContent = 'Start Navigating';
       return;
     }
 
     gate.style.display = 'none';
     loading.classList.remove('hidden');
-    headingBadge.style.display = 'block';
 
     window.addEventListener('deviceorientationabsolute', onOrientation, true);
     window.addEventListener('deviceorientation', onOrientation, true);
 
-    navigator.geolocation.watchPosition(onPosition, onPositionError, {
+    // NOTE: intentionally always enableHighAccuracy — for waypoints this close together,
+    // trading accuracy for battery life (as some GPS "optimizations" suggest) would undo
+    // the position-smoothing work above. Small area = accuracy wins over battery here.
+    watchId = navigator.geolocation.watchPosition(onPosition, onPositionError, {
       enableHighAccuracy: true,
       maximumAge: 1000,
       timeout: 20000
     });
 
-    setTimeout(() => {
-      if (!firstFixReceived){
-        loading.querySelector('.msg').textContent =
-          'Still waiting for GPS… make sure location access is allowed.';
-      }
-    }, 12000);
+    checkArSceneUsable();
   }
+
+  function stopGPS(){
+    if (watchId !== null){
+      navigator.geolocation.clearWatch(watchId);
+      watchId = null;
+    }
+  }
+  window.addEventListener('beforeunload', stopGPS);
+  window.addEventListener('pagehide', stopGPS);
+
+  // Keyboard shortcuts — handy for testing this at a desk without walking the actual route
+  document.addEventListener('keydown', (e) => {
+    if (gate.style.display !== 'none') return; // don't hijack keys before navigation starts
+    if (e.key === 'ArrowRight') skipBtn.click();
+    if (e.key === 'ArrowLeft') prevBtn.click();
+    if (e.key === ' '){ e.preventDefault(); hereBtn.click(); }
+  });
 
   startBtn.addEventListener('click', start);
 
