@@ -1,4 +1,8 @@
-import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
+import {
+  createBrowserRouter,
+  RouterProvider,
+  Navigate,
+} from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -33,9 +37,10 @@ const router = createBrowserRouter([
       {
         path: "/explore",
         element: (
-          <ProtectedRoute roles={["user", "admin"]}>
-            <PathfinderPage />
-          </ProtectedRoute>
+          // <ProtectedRoute roles={["user", "admin"]}>
+          //   <PathfinderPage />
+          // </ProtectedRoute>
+          <PathfinderPage />
         ),
       },
       {
