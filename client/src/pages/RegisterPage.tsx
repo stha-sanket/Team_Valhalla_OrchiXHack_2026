@@ -1,10 +1,43 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import type { FormEvent } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import ThemeToggle from "../components/ThemeToggle";
+import { useRegisterMutation } from "../store/api/authApi";
+
+interface ApiErrorResponse {
+  data?: { error?: string };
+}
 
 const RegisterPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [register, { isLoading, error }] = useRegisterMutation();
+  const navigate = useNavigate();
+
+  const apiErrorMessage = error ? (error as ApiErrorResponse).data?.error ?? "Something went wrong" : null;
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setFormError(null);
+    if (password !== confirmPassword) {
+      setFormError("Passwords do not match");
+      return;
+    }
+    try {
+      await register({ name, email, password }).unwrap();
+      setSuccess(true);
+      setTimeout(() => navigate("/login"), 2000);
+    } catch {
+      // apiErrorMessage above already reflects the failure
+    }
+  };
+
   return (
     <div className="relative min-h-screen bg-stone-50 dark:bg-[#17140F] flex items-center justify-center p-4 selection:bg-highlight1 selection:text-black overflow-hidden transition-colors duration-500">
       {/* Dynamic Background Elements */}
@@ -33,7 +66,17 @@ const RegisterPage = () => {
           />
         </div>
 
-        <form className="relative space-y-4 z-10">
+        <form className="relative space-y-4 z-10" onSubmit={handleSubmit}>
+          {success && (
+            <p className="text-sm text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-md px-3 py-2">
+              Account created! Check your email to verify, redirecting to sign in...
+            </p>
+          )}
+          {(formError || apiErrorMessage) && (
+            <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-md px-3 py-2">
+              {formError ?? apiErrorMessage}
+            </p>
+          )}
           <div className="space-y-1.5">
             <label
               className="block text-stone-700 dark:text-stone-300 text-sm font-semibold ml-1"
@@ -44,6 +87,9 @@ const RegisterPage = () => {
             <input
               type="text"
               id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
               placeholder="John Doe"
               className="w-full bg-white/50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-stone-900 dark:text-white rounded-md px-3 py-2 text-sm focus:outline-none focus:border-highlight1 focus:ring-2 focus:ring-highlight1/50 transition-all placeholder-stone-400 dark:placeholder-stone-500 shadow-sm"
             />
@@ -90,6 +136,9 @@ const RegisterPage = () => {
             <input
               type="email"
               id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
               placeholder="name@example.com"
               className="w-full bg-white/50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-stone-900 dark:text-white rounded-md px-3 py-2 text-sm focus:outline-none focus:border-highlight1 focus:ring-2 focus:ring-highlight1/50 transition-all placeholder-stone-400 dark:placeholder-stone-500 shadow-sm"
             />
@@ -105,6 +154,9 @@ const RegisterPage = () => {
               <input
                 type={showPassword ? "text" : "password"}
                 id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
                 placeholder="••••••••"
                 className="w-full bg-white/50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-stone-900 dark:text-white rounded-md px-3 py-2 pr-10 text-sm focus:outline-none focus:border-highlight1 focus:ring-2 focus:ring-highlight1/50 transition-all placeholder-stone-400 dark:placeholder-stone-500 shadow-sm"
               />
@@ -162,6 +214,9 @@ const RegisterPage = () => {
               <input
                 type={showConfirmPassword ? "text" : "password"}
                 id="confirmPassword"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
                 placeholder="••••••••"
                 className="w-full bg-white/50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-stone-900 dark:text-white rounded-md px-3 py-2 pr-10 text-sm focus:outline-none focus:border-highlight1 focus:ring-2 focus:ring-highlight1/50 transition-all placeholder-stone-400 dark:placeholder-stone-500 shadow-sm"
               />
@@ -210,10 +265,11 @@ const RegisterPage = () => {
           </div>
 
           <button
-            type="button"
-            className="relative w-full bg-highlight1 text-white font-medium text-sm py-2 rounded-md shadow-lg shadow-highlight1/30 hover:shadow-highlight1/50 hover:-translate-y-0.5 transition-all duration-300 mt-2 overflow-hidden group"
+            type="submit"
+            disabled={isLoading}
+            className="relative w-full bg-highlight1 text-white font-medium text-sm py-2 rounded-md shadow-lg shadow-highlight1/30 hover:shadow-highlight1/50 hover:-translate-y-0.5 transition-all duration-300 mt-2 overflow-hidden group disabled:opacity-60 disabled:pointer-events-none"
           >
-            <span className="relative z-10">Submit Application</span>
+            <span className="relative z-10">{isLoading ? "Submitting..." : "Submit Application"}</span>
             <div className="absolute inset-0 h-full w-full bg-white/20 scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300 ease-out"></div>
           </button>
         </form>
