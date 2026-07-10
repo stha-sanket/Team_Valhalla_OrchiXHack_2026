@@ -7,6 +7,7 @@ export interface VisitingPlace {
   description: string;
   lat: string;
   long: string;
+  badge?: string;
 }
 
 interface CreateVisitingPlaceRequest {
@@ -14,6 +15,7 @@ interface CreateVisitingPlaceRequest {
   description: string;
   lat: string;
   long: string;
+  badge?: string;
 }
 
 export const visitingPlaceApi = createApi({
