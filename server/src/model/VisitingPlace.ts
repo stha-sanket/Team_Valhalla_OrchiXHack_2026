@@ -5,6 +5,7 @@ export interface VisitingPlaceDocument {
   description: string;
   lat: string;
   long: string;
+  badge: string;
 }
 
 export const VisitingPlace = defineModel<VisitingPlaceDocument>(
@@ -14,5 +15,6 @@ export const VisitingPlace = defineModel<VisitingPlaceDocument>(
     description: { type: "string", required: true },
     lat: { type: "string", required: true },
     long: { type: "string", required: true },
+    badge: { type: "string", required: false },
   },
 );
