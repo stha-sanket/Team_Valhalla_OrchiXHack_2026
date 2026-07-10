@@ -1,9 +1,36 @@
 @import "tailwindcss";
 
+/*
+ * Palette: shades of the Nepalese flag.
+ * crimson — flag crimson (#DC143C) · navy — flag border blue (#003893)
+ */
 @theme {
-  --color-highlight1: #2FA98F;
-  --color-highlight2: #1C7FA6;
-  --color-highlight3: #0F5EAB;
+  --color-crimson-50: #FDECEF;
+  --color-crimson-100: #FAD4DB;
+  --color-crimson-200: #F5A9B7;
+  --color-crimson-300: #EF7D92;
+  --color-crimson-400: #E8506D;
+  --color-crimson-500: #DC143C;
+  --color-crimson-600: #C01134;
+  --color-crimson-700: #9E0E2B;
+  --color-crimson-800: #7C0B22;
+  --color-crimson-900: #5A0819;
+
+  --color-navy-50: #E6EDF8;
+  --color-navy-100: #C2D3EE;
+  --color-navy-200: #8FAEDE;
+  --color-navy-300: #5C88CE;
+  --color-navy-400: #2E63BE;
+  --color-navy-500: #003893;
+  --color-navy-600: #00307E;
+  --color-navy-700: #002867;
+  --color-navy-800: #001F50;
+  --color-navy-900: #001739;
+
+  /* Legacy accent tokens, remapped onto the flag palette. */
+  --color-highlight1: #DC143C;
+  --color-highlight2: #003893;
+  --color-highlight3: #00307E;
   --color-highlight4: #8A8374;
   --color-highlight5: #3A362E;
 }
