@@ -38,8 +38,8 @@ export const GET = async (req: Request, res: Response) => {
 };
 
 export const PUT = async (req: Request, res: Response) => {
-  const { name, description, lat, long } = req.body;
-  const updated = await VisitingPlace.update(req.params.id, { name, description, lat, long });
+  const { name, description, lat, long, badge } = req.body;
+  const updated = await VisitingPlace.update(req.params.id, { name, description, lat, long, badge });
   if (!updated) return res.status(404).json({ error: 'Place not found' });
   res.json({ message: 'Place updated', place: updated });
 };
