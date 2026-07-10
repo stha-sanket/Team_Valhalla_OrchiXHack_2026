@@ -2,7 +2,11 @@ import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom"
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
+import ProfilePage from "./pages/ProfilePage";
+import PathfinderPage from "./pages/PathfinderPage";
+import WaypointLoggerPage from "./pages/admin/WaypointLoggerPage";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AppLayout from "./components/AppLayout";
 
 const router = createBrowserRouter([
   {
@@ -18,12 +22,31 @@ const router = createBrowserRouter([
     element: <RegisterPage />,
   },
   {
-    path: "/dashboard",
     element: (
       <ProtectedRoute>
-        <DashboardPage />
+        <AppLayout />
       </ProtectedRoute>
     ),
+    children: [
+      { path: "/dashboard", element: <DashboardPage /> },
+      { path: "/profile", element: <ProfilePage /> },
+      {
+        path: "/explore",
+        element: (
+          <ProtectedRoute roles={["user", "admin"]}>
+            <PathfinderPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/admin/waypoint-logger",
+        element: (
+          <ProtectedRoute roles={["admin"]}>
+            <WaypointLoggerPage />
+          </ProtectedRoute>
+        ),
+      },
+    ],
   },
 ]);
 
