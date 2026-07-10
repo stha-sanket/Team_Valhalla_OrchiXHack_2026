@@ -19,12 +19,42 @@ interface WsTicketResponse {
   expiresIn: number;
 }
 
+export interface TripMilestone {
+  id: string;
+  name: string;
+  description: string;
+  index: number;
+  visited: boolean;
+}
+
+export interface TripSummary {
+  progress_id: string;
+  place: {
+    id: string;
+    name: string;
+    description: string;
+    badge: string | null;
+  };
+  total_points: number;
+  visited_points: number;
+  milestones: TripMilestone[];
+  badge_earned: boolean;
+}
+
+export interface ProgressSummaryResponse {
+  user: { name: string; avatar: string | null } | null;
+  trips: TripSummary[];
+}
+
 export const userProgressApi = createApi({
   reducerPath: "userProgressApi",
   baseQuery: baseQueryWithReauth,
   endpoints: (builder) => ({
     getUserProgress: builder.query<{ progress: UserProgress | null }, { visitingPlaceId: string }>({
       query: ({ visitingPlaceId }) => `/user-progress?visiting_place_id=${visitingPlaceId}`,
+    }),
+    getProgressSummary: builder.query<ProgressSummaryResponse, void>({
+      query: () => "/user-progress/summary",
     }),
     startUserProgress: builder.mutation<{ progress: UserProgress }, { visiting_place_id: string }>({
       query: (body) => ({ url: "/user-progress", method: "POST", body }),
@@ -39,6 +69,7 @@ export const userProgressApi = createApi({
 
 export const {
   useGetUserProgressQuery,
+  useGetProgressSummaryQuery,
   useStartUserProgressMutation,
   useGetWsTicketMutation,
 } = userProgressApi;
