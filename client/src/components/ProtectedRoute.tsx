@@ -2,11 +2,12 @@ import type { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useGetMeQuery } from '../store/api/authApi';
 
-const ProtectedRoute = ({ children }: { children: ReactNode }) => {
-  const { isLoading, isError } = useGetMeQuery();
+const ProtectedRoute = ({ children, roles }: { children: ReactNode; roles?: string[] }) => {
+  const { data, isLoading, isError } = useGetMeQuery();
 
   if (isLoading) return null;
   if (isError) return <Navigate to="/login" replace />;
+  if (roles && !roles.includes(data!.user.role)) return <Navigate to="/dashboard" replace />;
 
   return <>{children}</>;
 };
