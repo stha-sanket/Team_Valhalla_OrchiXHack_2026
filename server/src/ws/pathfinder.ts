@@ -2,7 +2,7 @@ import type { Server as HttpServer } from 'node:http';
 import { WebSocketServer, type WebSocket, type RawData } from 'ws';
 import { jwtVerify } from 'jose';
 import { VisitingPlace } from '../model/VisitingPlace.js';
-import { evaluateProximity } from '../lib/proximity.js';
+import { evaluateProximity, confirmVisit } from '../lib/proximity.js';
 
 interface TicketPayload {
   id: string;
@@ -54,6 +54,9 @@ export function attachPathfinderWebSocketServer(server: HttpServer): void {
   });
 
   wss.on('connection', (ws: WebSocket, user: TicketPayload, visitingPlaceId: string) => {
+    // Last reported position — checkpoint confirmations are validated against it.
+    let lastLocation: { lat: number; long: number } | null = null;
+
     ws.on('message', async (raw: RawData) => {
       let msg: unknown;
       try {
@@ -63,18 +66,51 @@ export function attachPathfinderWebSocketServer(server: HttpServer): void {
         return;
       }
 
-      const location = msg as { type?: string; lat?: number; long?: number };
-      if (location.type !== 'location' || typeof location.lat !== 'number' || typeof location.long !== 'number') {
-        ws.send(JSON.stringify({ type: 'error', message: 'expected {type:"location", lat, long}' }));
+      const parsed = msg as { type?: string; lat?: number; long?: number; route_id?: string };
+
+      if (parsed.type === 'confirm_visit') {
+        if (typeof parsed.route_id !== 'string') {
+          ws.send(JSON.stringify({ type: 'error', message: 'expected {type:"confirm_visit", route_id}' }));
+          return;
+        }
+        if (!lastLocation) {
+          ws.send(JSON.stringify({ type: 'visit_result', confirmed: false, reason: 'No location received yet.' }));
+          return;
+        }
+        try {
+          const result = await confirmVisit({
+            userId: user.id,
+            visitingPlaceId,
+            routeId: parsed.route_id,
+            lat: lastLocation.lat,
+            long: lastLocation.long,
+          });
+          ws.send(JSON.stringify({
+            type: 'visit_result',
+            confirmed: result.confirmed,
+            reason: result.confirmed ? undefined : result.reason,
+            route_id: parsed.route_id,
+          }));
+          ws.send(JSON.stringify({ type: 'progress', ...result.progress }));
+        } catch (err) {
+          ws.send(JSON.stringify({ type: 'error', message: err instanceof Error ? err.message : 'Unknown error' }));
+        }
         return;
       }
+
+      if (parsed.type !== 'location' || typeof parsed.lat !== 'number' || typeof parsed.long !== 'number') {
+        ws.send(JSON.stringify({ type: 'error', message: 'expected {type:"location", lat, long} or {type:"confirm_visit", route_id}' }));
+        return;
+      }
+
+      lastLocation = { lat: parsed.lat, long: parsed.long };
 
       try {
         const result = await evaluateProximity({
           userId: user.id,
           visitingPlaceId,
-          lat: location.lat,
-          long: location.long,
+          lat: parsed.lat,
+          long: parsed.long,
         });
         ws.send(JSON.stringify({ type: 'progress', ...result }));
       } catch (err) {
