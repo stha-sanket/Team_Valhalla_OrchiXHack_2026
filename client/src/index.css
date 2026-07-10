@@ -1,11 +1,11 @@
 @import "tailwindcss";
 
 @theme {
-  --color-highlight1: #E1CA96;
-  --color-highlight2: #ACA885;
-  --color-highlight3: #918B76;
-  --color-highlight4: #626C66;
-  --color-highlight5: #434A42;
+  --color-highlight1: #2FA98F;
+  --color-highlight2: #1C7FA6;
+  --color-highlight3: #0F5EAB;
+  --color-highlight4: #8A8374;
+  --color-highlight5: #3A362E;
 }
 
 @custom-variant dark (&:is(.dark *));

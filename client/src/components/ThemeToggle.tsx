@@ -23,7 +23,7 @@ const ThemeToggle = () => {
   return (
     <button 
       onClick={() => setIsDark(!isDark)}
-      className="absolute top-6 right-6 p-2.5 rounded-full bg-white/20 dark:bg-black/40 backdrop-blur-md border border-white/30 dark:border-white/10 text-gray-800 dark:text-gray-200 hover:scale-110 transition-all duration-300 shadow-[0_8px_30px_rgb(0,0,0,0.12)] z-50 group"
+      className="absolute top-6 right-6 p-2.5 rounded-full bg-white/20 dark:bg-black/40 backdrop-blur-md border border-white/30 dark:border-white/10 text-stone-800 dark:text-stone-200 hover:scale-110 transition-all duration-300 shadow-[0_8px_30px_rgb(0,0,0,0.12)] z-50 group"
       aria-label="Toggle Theme"
     >
       {isDark ? (
