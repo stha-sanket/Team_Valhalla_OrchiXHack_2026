@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>Nepal Heritage AR Pathfinder</title>
+
+<script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+<script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+
+<style>
+  :root{
+    --copper: #c97b3d;      /* pagoda roof copper */
+    --marigold: #e0a527;    /* marigold gold — the signature accent */
+    --brick: #7a2e2e;       /* newari brick red */
+    --ink: #14110d;
+    --paper: #f4ecdc;
+    --ok: #5fb87a;
+    --warn: #e0a527;
+    --radius: 14px;
+  }
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body{
+    margin:0; padding:0; overflow:hidden; height:100%;
+    background:#000; color:var(--paper);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+  a-scene{ position:absolute; inset:0; z-index:1; }
+
+  /* ---------- Gate screen (permission request) ---------- */
+  #gate{
+    position:fixed; inset:0; z-index:100;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, rgba(224,165,39,0.15), transparent),
+      var(--ink);
+    text-align:center; padding:32px;
+  }
+  #gate h1{
+    font-size:26px; margin:0 0 6px; letter-spacing:0.02em;
+    color:var(--paper);
+  }
+  #gate .eyebrow{
+    color:var(--marigold); font-size:12px; letter-spacing:0.24em;
+    text-transform:uppercase; margin-bottom:14px; font-weight:600;
+  }
+  #gate p{ color:#c9c2b3; max-width:340px; line-height:1.5; font-size:14.5px; }
+  #startBtn{
+    margin-top:26px; padding:16px 40px; font-size:16px; font-weight:600;
+    border:none; border-radius:999px; cursor:pointer;
+    background:linear-gradient(135deg,var(--marigold),var(--copper));
+    color:#241705; letter-spacing:0.02em;
+    box-shadow:0 8px 24px rgba(224,165,39,0.35);
+  }
+  #startBtn:active{ transform:scale(0.97); }
+  #gateError{
+    margin-top:18px; color:#f0a5a5; font-size:13px; max-width:320px; display:none;
+  }
+
+  /* ---------- Loading ---------- */
+  #loading{
+    position:fixed; inset:0; z-index:90;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:var(--ink); gap:14px;
+  }
+  #loading.hidden{ display:none; }
+  .spinner{
+    width:34px; height:34px; border-radius:50%;
+    border:3px solid rgba(224,165,39,0.2); border-top-color:var(--marigold);
+    animation:spin 0.9s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  #loading .msg{ color:#c9c2b3; font-size:14px; }
+
+  /* ---------- Top control bar ---------- */
+  #topbar{
+    position:fixed; top:0; left:0; right:0; z-index:20;
+    display:flex; gap:8px; align-items:center;
+    padding: max(12px, env(safe-area-inset-top)) 12px 12px;
+    background:linear-gradient(rgba(0,0,0,0.65), transparent);
+  }
+  #siteSelect{
+    flex:1; min-width:0; padding:11px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.15);
+    background:rgba(20,17,13,0.85); color:var(--paper); font-size:14px;
+  }
+  #goBtn{
+    padding:11px 16px; border-radius:10px; border:none; font-weight:600; cursor:pointer;
+    background:var(--marigold); color:#241705; font-size:14px; white-space:nowrap;
+  }
+
+  /* ---------- HUD: the primary navigation arrow ---------- */
+  #hud{
+    position:fixed; left:0; right:0; bottom:0; z-index:15;
+    display:flex; flex-direction:column; align-items:center;
+    padding: 18px 16px max(22px, env(safe-area-inset-bottom));
+    background:linear-gradient(transparent, rgba(0,0,0,0.75) 55%);
+    pointer-events:none;
+  }
+  #compassWrap{
+    width:150px; height:150px; border-radius:50%;
+    background:radial-gradient(circle at 50% 40%, rgba(224,165,39,0.14), rgba(0,0,0,0.35));
+    border:1px solid rgba(224,165,39,0.35);
+    display:flex; align-items:center; justify-content:center;
+    position:relative; margin-bottom:10px;
+  }
+  #arrowSvg{
+    width:88px; height:88px;
+    transition: transform 0.15s linear;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+  }
+  #arrivedBadge{
+    position:absolute; inset:0; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:28px; opacity:0; transition:opacity 0.3s;
+  }
+  #arrivedBadge.show{ opacity:1; }
+  #distText{
+    font-size:22px; font-weight:700; color:var(--paper); letter-spacing:0.01em;
+  }
+  #destNameText{
+    font-size:13px; color:var(--marigold); margin-top:2px; text-transform:uppercase; letter-spacing:0.12em;
+  }
+  #compassNote{
+    font-size:11.5px; color:#a89f8c; margin-top:10px; max-width:280px; text-align:center; line-height:1.4;
+  }
+
+  /* ---------- misc ---------- */
+  #headingBadge{
+    position:fixed; top:78px; right:12px; z-index:20;
+    background:rgba(20,17,13,0.75); border:1px solid rgba(255,255,255,0.12);
+    border-radius:10px; padding:6px 10px; font-size:11px; color:#c9c2b3;
+  }
+  #calibrateBanner{
+    position:fixed; top:78px; left:12px; right:96px; z-index:21;
+    background:rgba(224,165,39,0.16); border:1px solid rgba(224,165,39,0.4);
+    color:var(--marigold); font-size:12px; padding:8px 12px; border-radius:10px;
+    display:none; text-align:center;
+  }
+  #calibrateBanner.show{ display:block; }
+</style>
+</head>
+
+<body>
+
+  <!-- ============================================================ -->
+  <!-- GATE: must request geolocation + motion permission on a tap  -->
+  <!-- (iOS Safari requires a user gesture for DeviceOrientation)   -->
+  <!-- ============================================================ -->
+  <div id="gate">
+    <div class="eyebrow">Kathmandu Valley</div>
+    <h1>Heritage AR Pathfinder</h1>
+    <p>Follow a live compass arrow through the valley to Newari temples and durbar squares. Needs your location and compass — best used outdoors.</p>
+    <button id="startBtn">Start Navigating</button>
+    <div id="gateError"></div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- LOADING (shown after gate, while first GPS fix arrives)      -->
+  <!-- ============================================================ -->
+  <div id="loading" class="hidden">
+    <div class="spinner"></div>
+    <div class="msg">Getting your position…</div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- TOP BAR: destination picker                                  -->
+  <!-- ============================================================ -->
+  <div id="topbar">
+    <select id="siteSelect">
+      <option value="Krishna Mandir, Patan">Krishna Mandir, Patan</option>
+      <option value="Swayambhunath Stupa">Swayambhunath Stupa</option>
+      <option value="Patan Durbar Square">Patan Durbar Square</option>
+      <option value="Bhaktapur Durbar Square">Bhaktapur Durbar Square</option>
+      <option value="Kathmandu Durbar Square">Kathmandu Durbar Square</option>
+    </select>
+    <button id="goBtn">Go</button>
+  </div>
+
+  <div id="calibrateBanner">↺ Wave your phone in a figure-8 to calibrate the compass</div>
+  <div id="headingBadge">hdg —°</div>
+
+  <!-- ============================================================ -->
+  <!-- HUD: the arrow you actually follow. Pure CSS/SVG rotation,   -->
+  <!-- driven by bearing-to-target minus device compass heading.    -->
+  <!-- This never drifts or "sticks" the way 3D GPS entities can.   -->
+  <!-- ============================================================ -->
+  <div id="hud">
+    <div id="compassWrap">
+      <svg id="arrowSvg" viewBox="0 0 100 100">
+        <defs>
+          <linearGradient id="arrowGrad" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stop-color="#c97b3d"/>
+            <stop offset="100%" stop-color="#e0a527"/>
+          </linearGradient>
+        </defs>
+        <polygon points="50,6 78,62 50,48 22,62" fill="url(#arrowGrad)" stroke="#241705" stroke-width="2" stroke-linejoin="round"/>
+        <circle cx="50" cy="70" r="9" fill="#241705" opacity="0.55"/>
+      </svg>
+      <div id="arrivedBadge">🛕</div>
+    </div>
+    <div id="distText">— m</div>
+    <div id="destNameText">Krishna Mandir, Patan</div>
+    <div id="compassNote">Point the top of your phone forward and follow the arrow</div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- AR SCENE: webcam background + a real 3D pin at the site,     -->
+  <!-- as a bonus AR layer. The HUD above is what does the actual   -->
+  <!-- guiding, so this can degrade gracefully if GPS is noisy.     -->
+  <!-- ============================================================ -->
+  <a-scene
+    vr-mode-ui="enabled: false"
+    arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;"
+    embedded
+    renderer="antialias: true; alpha: true"
+    loading-screen="enabled: false">
+
+    <a-camera
+      id="camera"
+      gps-new-camera="gpsMinDistance: 3"
+      arjs-device-orientation-controls="smoothingFactor: 0.1"
+      look-controls-enabled="false">
+    </a-camera>
+
+    <a-entity id="destinationMarker">
+      <a-cylinder radius="0.5" height="0.1" color="#c97b3d"></a-cylinder>
+      <a-cylinder radius="0.13" height="1.1" color="#c97b3d" position="0 0.55 0"></a-cylinder>
+      <a-cone radius-bottom="0.55" radius-top="0" height="0.5" color="#7a2e2e" position="0 1.35 0"></a-cone>
+      <a-sphere radius="0.14" color="#e0a527" position="0 1.68 0"></a-sphere>
+      <a-ring radius-inner="0.5" radius-outer="0.65" color="#e0a527" opacity="0.55" position="0 0.06 0"
+        animation="property: scale; from: 1 1 1; to: 2.1 2.1 2.1; dur: 1800; loop: true; easing: easeOutQuad"
+        animation__fade="property: opacity; from: 0.55; to: 0; dur: 1800; loop: true; easing: easeOutQuad">
+      </a-ring>
+    </a-entity>
+
+    <a-entity id="destinationLabel" position="0 2.6 0" look-at="[gps-new-camera]">
+      <a-text id="destText" value="Krishna Mandir" color="#f4ecdc" align="center" scale="4 4 4" font="mozillavr"></a-text>
+      <a-text value="▼" color="#e0a527" align="center" scale="3 3 3" position="0 -0.8 0"></a-text>
+    </a-entity>
+
+    <a-entity id="pathContainer"></a-entity>
+  </a-scene>
+
+<script>
+(function(){
+  "use strict";
+
+  // ============================================================
+  // DATA
+  // ============================================================
+  const HERITAGE_SITES = {
+    'Krishna Mandir, Patan':      { lat: 27.7110, lng: 85.3243 },
+    'Swayambhunath Stupa':        { lat: 27.7145, lng: 85.3050 },
+    'Patan Durbar Square':        { lat: 27.7172, lng: 85.3240 },
+    'Bhaktapur Durbar Square':    { lat: 27.7028, lng: 85.3150 },
+    'Kathmandu Durbar Square':    { lat: 27.7100, lng: 85.2900 }
+  };
+
+  let destLat = 27.7110, destLng = 85.3243, destName = 'Krishna Mandir, Patan';
+  let userLat = null, userLng = null;
+  let smoothedHeading = null;   // low-pass filtered compass heading, degrees 0-360
+  let firstFixReceived = false;
+  let usingAbsoluteOrientation = false;
+
+  // DOM
+  const gate = document.getElementById('gate');
+  const gateError = document.getElementById('gateError');
+  const startBtn = document.getElementById('startBtn');
+  const loading = document.getElementById('loading');
+  const arrowSvg = document.getElementById('arrowSvg');
+  const distText = document.getElementById('distText');
+  const destNameText = document.getElementById('destNameText');
+  const arrivedBadge = document.getElementById('arrivedBadge');
+  const headingBadge = document.getElementById('headingBadge');
+  const calibrateBanner = document.getElementById('calibrateBanner');
+  const siteSelect = document.getElementById('siteSelect');
+  const goBtn = document.getElementById('goBtn');
+  const destText = document.getElementById('destText');
+
+  // ============================================================
+  // GEO MATH  (unchanged logic from the original — these were correct)
+  // ============================================================
+  function toRad(d){ return d * Math.PI / 180; }
+
+  function calculateBearing(lat1, lng1, lat2, lng2){
+    const dLng = toRad(lng2 - lng1);
+    const phi1 = toRad(lat1), phi2 = toRad(lat2);
+    const x = Math.sin(dLng) * Math.cos(phi2);
+    const y = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(dLng);
+    return (Math.atan2(x, y) * 180 / Math.PI + 360) % 360;
+  }
+
+  function calculateDistance(lat1, lng1, lat2, lng2){
+    const R = 6371000;
+    const phi1 = toRad(lat1), phi2 = toRad(lat2);
+    const dPhi = toRad(lat2 - lat1), dLambda = toRad(lng2 - lng1);
+    const a = Math.sin(dPhi/2)**2 + Math.cos(phi1)*Math.cos(phi2)*Math.sin(dLambda/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+
+  // ============================================================
+  // HUD ARROW  — this is the reliable, primary navigation cue.
+  // rotation = bearing to destination minus where the phone is
+  // currently pointing. CSS rotates the SVG; no 3D placement,
+  // so there's nothing to drift or "stick to the camera".
+  // ============================================================
+  function updateHud(){
+    if (userLat == null || smoothedHeading == null) return;
+
+    const distance = calculateDistance(userLat, userLng, destLat, destLng);
+    const bearing = calculateBearing(userLat, userLng, destLat, destLng);
+    let rel = bearing - smoothedHeading;
+    rel = ((rel + 180) % 360 + 360) % 360 - 180; // normalize to -180..180
+
+    arrowSvg.style.transform = `rotate(${rel}deg)`;
+
+    if (distance < 12){
+      distText.textContent = 'You\'re here';
+      distText.style.color = '#5fb87a';
+      arrivedBadge.classList.add('show');
+      arrowSvg.style.opacity = '0.25';
+    } else {
+      arrivedBadge.classList.remove('show');
+      arrowSvg.style.opacity = '1';
+      distText.style.color = '#f4ecdc';
+      distText.textContent = distance < 1000
+        ? `${Math.round(distance)} m`
+        : `${(distance/1000).toFixed(2)} km`;
+    }
+
+    headingBadge.textContent = `hdg ${Math.round(smoothedHeading)}°`;
+  }
+
+  // ============================================================
+  // AR PIN (bonus visual layer) — best-effort, not load-bearing
+  // ============================================================
+  function updateArPin(){
+    const marker = document.getElementById('destinationMarker');
+    const label = document.getElementById('destinationLabel');
+    marker.setAttribute('gps-new-entity-place', `latitude: ${destLat}; longitude: ${destLng}`);
+    label.setAttribute('gps-new-entity-place', `latitude: ${destLat}; longitude: ${destLng}`);
+    destText.setAttribute('value', destName);
+  }
+
+  function generateWaypoints(lat1, lng1, lat2, lng2){
+    const container = document.getElementById('pathContainer');
+    container.innerHTML = '';
+    const numPoints = 8; // fewer than the original — keeps GPS-entity count low, which is friendlier to AR.js
+    for (let i = 1; i < numPoints; i++){
+      const t = i / numPoints;
+      const lat = lat1 + (lat2 - lat1) * t;
+      const lng = lng1 + (lng2 - lng1) * t;
+
+      const entity = document.createElement('a-entity');
+      entity.setAttribute('gps-new-entity-place', `latitude: ${lat}; longitude: ${lng}`);
+      entity.setAttribute('position', '0 0.1 0');
+
+      const sphere = document.createElement('a-sphere');
+      sphere.setAttribute('radius', '0.14');
+      sphere.setAttribute('color', '#e0a527');
+      sphere.setAttribute('opacity', '0.7');
+      sphere.setAttribute('animation', 'property: scale; from: 1 1 1; to: 1.5 1.5 1.5; dur: 1400; dir: alternate; loop: true; easing: easeInOutSine');
+
+      entity.appendChild(sphere);
+      container.appendChild(entity);
+    }
+  }
+
+  // ============================================================
+  // DESTINATION SELECTION
+  // ============================================================
+  function setDestination(name){
+    const site = HERITAGE_SITES[name];
+    if (!site) return;
+    destLat = site.lat; destLng = site.lng; destName = name;
+    destNameText.textContent = name;
+    updateArPin();
+    if (userLat != null) generateWaypoints(userLat, userLng, destLat, destLng);
+    updateHud();
+  }
+
+  goBtn.addEventListener('click', () => setDestination(siteSelect.value));
+
+  // ============================================================
+  // HEADING (compass) HANDLING
+  // Smoothing formula matches AR.js's own recommendation:
+  //   smoothed = k*new + (1-k)*smoothed,  k ~ 0.15
+  // ============================================================
+  function applyHeading(rawHeading){
+    if (rawHeading == null || isNaN(rawHeading)) return;
+    if (smoothedHeading == null){
+      smoothedHeading = rawHeading;
+    } else {
+      // shortest-path smoothing so it doesn't spin the long way around 0/360
+      let diff = rawHeading - smoothedHeading;
+      diff = ((diff + 180) % 360 + 360) % 360 - 180;
+      smoothedHeading = (smoothedHeading + 0.15 * diff + 360) % 360;
+    }
+    updateHud();
+  }
+
+  function onOrientation(e){
+    // iOS gives a direct compass heading. Android's `alpha` is
+    // "degrees counter-clockwise from the device's initial position",
+    // not true compass heading — 360-alpha is the standard approximation
+    // when absolute orientation is available.
+    if (typeof e.webkitCompassHeading === 'number'){
+      applyHeading(e.webkitCompassHeading);
+      calibrateBanner.classList.remove('show');
+    } else if (e.absolute && e.alpha != null){
+      applyHeading((360 - e.alpha) % 360);
+      calibrateBanner.classList.remove('show');
+    } else if (e.alpha != null){
+      // relative-only orientation: still usable, but warn that it may need calibration
+      applyHeading((360 - e.alpha) % 360);
+      calibrateBanner.classList.add('show');
+    }
+  }
+
+  // ============================================================
+  // GEOLOCATION
+  // ============================================================
+  function onPosition(pos){
+    userLat = pos.coords.latitude;
+    userLng = pos.coords.longitude;
+
+    if (!firstFixReceived){
+      firstFixReceived = true;
+      loading.classList.add('hidden');
+      updateArPin();
+      generateWaypoints(userLat, userLng, destLat, destLng);
+    }
+    updateHud();
+  }
+
+  function onPositionError(err){
+    loading.querySelector('.msg').textContent =
+      'Couldn\'t get GPS location (' + err.message + '). Move outdoors and reload.';
+  }
+
+  // ============================================================
+  // START — everything below only runs after the user taps
+  // "Start Navigating", because iOS requires a user gesture
+  // before it will grant DeviceOrientationEvent access.
+  // ============================================================
+  async function start(){
+    gateError.style.display = 'none';
+
+    // Motion/orientation permission (iOS 13+)
+    try{
+      if (typeof DeviceOrientationEvent !== 'undefined' &&
+          typeof DeviceOrientationEvent.requestPermission === 'function'){
+        const result = await DeviceOrientationEvent.requestPermission();
+        if (result !== 'granted'){
+          gateError.textContent = 'Compass permission was denied — the guide arrow needs it to know which way you\'re facing.';
+          gateError.style.display = 'block';
+          return;
+        }
+      }
+    } catch(e){
+      gateError.textContent = 'Could not request compass permission: ' + e.message;
+      gateError.style.display = 'block';
+      return;
+    }
+
+    if (!('geolocation' in navigator)){
+      gateError.textContent = 'This browser does not support geolocation.';
+      gateError.style.display = 'block';
+      return;
+    }
+
+    gate.style.display = 'none';
+    loading.classList.remove('hidden');
+
+    window.addEventListener('deviceorientationabsolute', onOrientation, true);
+    window.addEventListener('deviceorientation', onOrientation, true);
+
+    navigator.geolocation.watchPosition(onPosition, onPositionError, {
+      enableHighAccuracy: true,
+      maximumAge: 1000,
+      timeout: 20000
+    });
+
+    setTimeout(() => {
+      if (!firstFixReceived){
+        loading.querySelector('.msg').textContent =
+          'Still waiting for GPS… make sure location access is allowed and you\'re outdoors.';
+      }
+    }, 12000);
+  }
+
+  startBtn.addEventListener('click', start);
+
+  // init default destination text
+  setDestination('Krishna Mandir, Patan');
+
+})();
+</script>
+
+</body>
+</html>
