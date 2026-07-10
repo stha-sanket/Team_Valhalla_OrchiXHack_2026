@@ -10,8 +10,8 @@ export interface DockItem {
 
 const Dock = ({ items }: { items: DockItem[] }) => {
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-      <div className="flex items-end gap-1.5 bg-white/70 dark:bg-black/60 backdrop-blur-2xl border border-white/50 dark:border-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_40px_rgba(0,0,0,0.4)] px-2.5 py-2">
+    <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/85 dark:bg-black/75 backdrop-blur-2xl border-t border-stone-200/70 dark:border-white/10 pb-[env(safe-area-inset-bottom)]">
+      <div className="max-w-md mx-auto flex">
         {items.map((item) => (
           <button
             key={item.label}
@@ -19,20 +19,24 @@ const Dock = ({ items }: { items: DockItem[] }) => {
             onClick={item.onClick}
             disabled={item.disabled}
             aria-label={item.label}
-            className={`group relative flex items-center justify-center w-11 h-11 rounded-xl transition-all duration-300 hover:-translate-y-2 hover:scale-110 disabled:opacity-30 disabled:pointer-events-none disabled:hover:translate-y-0 disabled:hover:scale-100 ${
+            className={`flex-1 min-w-0 flex flex-col items-center gap-0.5 pt-2 pb-2.5 active:scale-95 transition-transform disabled:opacity-30 disabled:pointer-events-none ${
               item.active
-                ? 'bg-highlight1 text-white shadow-lg shadow-highlight1/30'
-                : 'text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-white/10'
+                ? 'text-crimson-500 dark:text-crimson-400'
+                : 'text-stone-400 dark:text-stone-500'
             }`}
           >
-            {item.icon}
-            <span className="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-stone-900 dark:bg-white px-2 py-1 text-xs font-medium text-white dark:text-stone-900 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              {item.label}
+            <span
+              className={`flex items-center justify-center w-12 h-7 rounded-full transition-colors ${
+                item.active ? 'bg-crimson-50 dark:bg-crimson-500/15' : ''
+              }`}
+            >
+              {item.icon}
             </span>
+            <span className="text-[10px] font-medium truncate max-w-full px-1">{item.label}</span>
           </button>
         ))}
       </div>
-    </div>
+    </nav>
   );
 };
 
