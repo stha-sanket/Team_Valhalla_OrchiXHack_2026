@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Nepal Heritage Quiz — Yatri AR</title>
+  <meta name="description" content="Test your knowledge of Nepal's UNESCO heritage sites, temples, and culture. 20 questions, multiple categories." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Tiro+Devanagari+Sanskrit:ital@0;1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/design-system.css" />
+  <link rel="stylesheet" href="assets/css/components.css" />
+  <style>
+    body { overflow-x: hidden; }
+
+    /* ========== START SCREEN ========== */
+    #startScreen {
+      min-height: 100svh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center;
+      padding: var(--sp-5);
+      background: var(--grad-mountain);
+    }
+
+    .start-icon { font-size: 72px; margin-bottom: var(--sp-4); animation: float 3s ease-in-out infinite; }
+    .start-eyebrow { color: var(--yatri-gold); font-size: var(--fs-xs); letter-spacing: 0.22em; text-transform: uppercase; font-weight: 700; margin-bottom: var(--sp-2); }
+    #startScreen h1 { font-size: var(--fs-2xl); font-weight: 900; margin: 0 0 var(--sp-3); }
+    #startScreen h1 span { background: var(--grad-gold); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    #startScreen p { color: var(--paper-muted); max-width: 340px; line-height: 1.6; font-size: var(--fs-sm); margin-bottom: var(--sp-5); }
+
+    .cat-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-2); margin-bottom: var(--sp-5); }
+    .cat-chip {
+      padding: 8px 14px; border-radius: var(--r-full); border: 1.5px solid var(--border);
+      background: transparent; color: var(--paper-muted); font-size: var(--fs-sm); cursor: pointer;
+      transition: all var(--dur-fast);
+    }
+    .cat-chip.active { border-color: var(--yatri-gold); color: var(--yatri-gold); background: rgba(241,196,15,0.1); }
+
+    .history-link { font-size: var(--fs-sm); color: var(--yatri-gold); cursor: pointer; text-decoration: underline; margin-top: var(--sp-3); }
+
+    /* ========== QUIZ SCREEN ========== */
+    #quizScreen { display: none; min-height: 100svh; flex-direction: column; }
+
+    .quiz-header {
+      position: sticky; top: 0; z-index: 10;
+      background: rgba(13,11,9,0.95); backdrop-filter: blur(20px);
+      padding: max(var(--sp-4), env(safe-area-inset-top)) var(--sp-5) var(--sp-4);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .quiz-meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--sp-3); }
+    .quiz-progress-label { font-size: var(--fs-xs); color: var(--paper-faint); }
+    .quiz-score-badge { font-size: var(--fs-sm); font-weight: 700; color: var(--yatri-gold); }
+
+    .quiz-body { flex: 1; padding: var(--sp-5); display: flex; flex-direction: column; gap: var(--sp-4); }
+
+    .question-category {
+      display: flex; align-items: center; gap: 6px;
+      font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em;
+    }
+
+    .question-text {
+      font-size: var(--fs-lg); font-weight: 700; line-height: 1.35;
+      animation: slide-up 0.3s ease;
+    }
+
+    /* Options */
+    .options { display: flex; flex-direction: column; gap: var(--sp-2); }
+
+    .option-btn {
+      width: 100%; text-align: left; padding: 16px 20px;
+      background: var(--ink-3); border: 1.5px solid var(--border);
+      border-radius: var(--r-md); color: var(--paper);
+      font-size: var(--fs-md); cursor: pointer;
+      transition: all var(--dur-fast); position: relative;
+      animation: slide-up 0.3s ease both;
+    }
+    .option-btn:hover:not(:disabled)  { border-color: var(--border-warm); background: var(--ink-4); }
+    .option-btn:active:not(:disabled) { transform: scale(0.98); }
+    .option-btn:disabled { cursor: default; }
+
+    .option-btn.correct {
+      background: rgba(39,174,96,0.15); border-color: var(--yatri-sage); color: var(--yatri-sage);
+      font-weight: 700;
+    }
+    .option-btn.wrong {
+      background: rgba(192,57,43,0.15); border-color: #e57373; color: #e57373;
+      font-weight: 700;
+    }
+    .option-btn.reveal {
+      background: rgba(39,174,96,0.08); border-color: rgba(39,174,96,0.4);
+    }
+
+    .option-letter {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 24px; height: 24px; border-radius: 50%;
+      background: var(--ink-4); font-size: 11px; font-weight: 700;
+      margin-right: 10px; flex-shrink: 0; vertical-align: middle;
+    }
+
+    /* Explanation box */
+    .explanation {
+      background: var(--ink-3); border: 1px solid var(--border-warm);
+      border-radius: var(--r-md); padding: var(--sp-4);
+      font-size: var(--fs-sm); color: var(--paper-muted); line-height: 1.6;
+      display: none; animation: slide-up 0.3s ease;
+    }
+    .explanation.show { display: block; }
+    .explanation strong { color: var(--yatri-gold); }
+
+    /* Streak */
+    #streakBar {
+      display: flex; align-items: center; gap: var(--sp-2);
+      padding: var(--sp-3) var(--sp-5) 0;
+    }
+    .streak-flame { font-size: 20px; animation: float 0.8s ease-in-out infinite; }
+    .streak-count { font-size: var(--fs-lg); font-weight: 900; color: var(--yatri-saffron); }
+    .streak-label { font-size: var(--fs-xs); color: var(--paper-faint); }
+
+    /* Next button */
+    .next-wrap { padding: 0 var(--sp-5) var(--sp-7); }
+
+    /* ========== RESULT SCREEN ========== */
+    #resultScreen {
+      display: none; min-height: 100svh;
+      flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: var(--sp-5);
+      background: var(--grad-mountain);
+    }
+
+    .result-trophy { font-size: 80px; margin-bottom: var(--sp-3); animation: float 3s ease-in-out infinite; }
+    .result-title  { font-size: var(--fs-2xl); font-weight: 900; margin: 0 0 var(--sp-2); }
+    .result-score  {
+      font-size: 64px; font-weight: 900;
+      background: var(--grad-gold); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+      margin: var(--sp-3) 0;
+    }
+    .result-badge-title { font-size: var(--fs-sm); color: var(--yatri-gold); font-weight: 700; margin-bottom: var(--sp-5); }
+    .result-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: var(--sp-3); width: 100%; max-width: 360px; margin-bottom: var(--sp-5); }
+    .result-stat { background: var(--ink-3); border:1px solid var(--border); border-radius: var(--r-md); padding: var(--sp-3); }
+    .result-stat-num { font-size: var(--fs-xl); font-weight: 900; color: var(--yatri-gold); }
+    .result-stat-label { font-size: 10px; color: var(--paper-faint); text-transform: uppercase; letter-spacing: 0.1em; }
+
+    .result-cta { display: flex; flex-direction: column; gap: var(--sp-3); width: 100%; max-width: 320px; }
+
+    /* ========== HISTORY SCREEN ========== */
+    #historyScreen {
+      display: none; min-height: 100svh; flex-direction: column;
+      padding: max(var(--sp-5), env(safe-area-inset-top)) var(--sp-5) var(--sp-8);
+    }
+    .history-header { display:flex; align-items:center; gap:var(--sp-3); margin-bottom: var(--sp-5); }
+    .history-title { font-size: var(--fs-xl); font-weight: 800; }
+    .history-item {
+      background: var(--ink-3); border:1px solid var(--border); border-radius: var(--r-md);
+      padding: var(--sp-4); margin-bottom: var(--sp-3);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .history-item.best { border-color: var(--border-warm); }
+    .hi-score { font-size: var(--fs-xl); font-weight: 900; color: var(--yatri-gold); }
+    .hi-date  { font-size: var(--fs-xs); color: var(--paper-faint); }
+    .hi-best  { font-size: 20px; }
+
+    .bottom-spacer { height: 80px; }
+  </style>
+</head>
+<body>
+
+  <!-- ======= START SCREEN ======= -->
+  <div id="startScreen">
+    <div class="start-icon">🧠</div>
+    <div class="start-eyebrow">Cultural Knowledge</div>
+    <h1>Nepal Heritage<br /><span>Challenge</span></h1>
+    <p class="font-deva" lang="ne" style="font-size:var(--fs-lg);">नेपाल सम्पदा प्रश्नोत्तरी</p>
+    <p>Test your knowledge of Nepal's UNESCO sites, history, religion, and geography — 20 questions, 4 categories.</p>
+
+    <div class="cat-chips" id="catChips">
+      <button class="cat-chip active" data-cat="all">🌏 All</button>
+      <button class="cat-chip" data-cat="heritage">🏛️ Heritage</button>
+      <button class="cat-chip" data-cat="religion">🛕 Religion</button>
+      <button class="cat-chip" data-cat="geography">🗺️ Geography</button>
+      <button class="cat-chip" data-cat="culture">🎭 Culture</button>
+      <button class="cat-chip" data-cat="history">📜 History</button>
+    </div>
+
+    <button class="btn btn-primary btn-lg" id="startQuizBtn" aria-label="Start the quiz">▶ Start Quiz</button>
+    <div class="history-link" id="showHistoryBtn">📊 View Past Scores</div>
+  </div>
+
+  <!-- ======= QUIZ SCREEN ======= -->
+  <div id="quizScreen">
+    <div class="quiz-header">
+      <div class="quiz-meta">
+        <div class="quiz-progress-label">
+          Question <span id="qNum">1</span> of <span id="qTotal">10</span>
+        </div>
+        <div class="quiz-score-badge">⭐ <span id="scoreDisplay">0</span> pts</div>
+      </div>
+      <div class="progress-bar" aria-label="Quiz progress">
+        <div class="progress-bar__fill" id="quizProgress" style="width:0%"></div>
+      </div>
+    </div>
+
+    <div id="streakBar" aria-live="polite" aria-label="Streak counter">
+      <!-- Populated by JS -->
+    </div>
+
+    <div class="quiz-body">
+      <div class="question-category" id="questionCategory" aria-label="Question category"></div>
+      <div class="question-text" id="questionText" aria-live="polite"></div>
+      <div class="options" id="optionsContainer" role="group" aria-label="Answer options"></div>
+      <div class="explanation" id="explanation"></div>
+    </div>
+
+    <div class="next-wrap">
+      <button class="btn btn-primary btn-block" id="nextBtn" style="display:none" aria-label="Go to next question">
+        Next Question →
+      </button>
+    </div>
+  </div>
+
+  <!-- ======= RESULT SCREEN ======= -->
+  <div id="resultScreen">
+    <div class="result-trophy" id="resultTrophy">🏆</div>
+    <h1 class="result-title" id="resultTitle">Quiz Complete!</h1>
+    <div class="result-score" id="resultScore">0</div>
+    <div class="result-badge-title" id="resultBadge">Heritage Novice</div>
+
+    <div class="result-stats">
+      <div class="result-stat">
+        <div class="result-stat-num" id="statCorrect">0</div>
+        <div class="result-stat-label">Correct</div>
+      </div>
+      <div class="result-stat">
+        <div class="result-stat-num" id="statStreak">0</div>
+        <div class="result-stat-label">Best Streak</div>
+      </div>
+      <div class="result-stat">
+        <div class="result-stat-num" id="statPct">0%</div>
+        <div class="result-stat-label">Accuracy</div>
+      </div>
+    </div>
+
+    <div class="result-cta">
+      <button class="btn btn-primary btn-lg" id="retryBtn" aria-label="Play again">🔄 Play Again</button>
+      <button class="btn btn-secondary" id="shareBtn" aria-label="Share your score">📤 Share Score</button>
+      <a href="explore.html" class="btn btn-ghost">🏛️ Explore Sites</a>
+    </div>
+  </div>
+
+  <!-- ======= HISTORY SCREEN ======= -->
+  <div id="historyScreen">
+    <div class="history-header">
+      <button id="backFromHistory" class="btn btn-ghost btn-icon" aria-label="Back to quiz start">←</button>
+      <div class="history-title">📊 Quiz History</div>
+    </div>
+    <div id="historyList"></div>
+    <div id="noHistory" style="color:var(--paper-faint);text-align:center;padding:var(--sp-8) 0;font-size:var(--fs-sm);">
+      No quiz attempts yet. Play a round first!
+    </div>
+  </div>
+
+  <!-- Bottom nav -->
+  <nav class="bottom-nav" role="navigation" aria-label="Main navigation">
+    <a href="index.html" class="nav-item" aria-label="Home">
+      <span class="nav-item__icon" aria-hidden="true">🏠</span>
+      <span class="nav-item__label">Home</span>
+    </a>
+    <a href="explore.html" class="nav-item" aria-label="Explore sites">
+      <span class="nav-item__icon" aria-hidden="true">🗺️</span>
+      <span class="nav-item__label">Explore</span>
+    </a>
+    <a href="navigate.html" class="nav-item" aria-label="AR Navigation">
+      <span class="nav-item__icon" aria-hidden="true">📍</span>
+      <span class="nav-item__label">Navigate</span>
+    </a>
+    <a href="quiz.html" class="nav-item active" aria-label="Cultural quiz" aria-current="page">
+      <span class="nav-item__icon" aria-hidden="true">🧠</span>
+      <span class="nav-item__label">Quiz</span>
+    </a>
+  </nav>
+
+  <div class="bottom-spacer"></div>
+
+  <script src="assets/js/quiz-data.js"></script>
+  <script>
+  (function () {
+    "use strict";
+
+    const LETTERS = ["A", "B", "C", "D"];
+    const BADGES = [
+      { min: 0,   emoji: "🌱", label: "Heritage Seed" },
+      { min: 50,  emoji: "📚", label: "Cultural Explorer" },
+      { min: 100, emoji: "🏛️", label: "Temple Scholar" },
+      { min: 150, emoji: "🎭", label: "Nepal Expert" },
+      { min: 190, emoji: "🏆", label: "Heritage Master" },
+    ];
+
+    // State
+    let questions = [];
+    let currentIdx = 0;
+    let score = 0;
+    let correct = 0;
+    let streak = 0;
+    let bestStreak = 0;
+    let answered = false;
+    let selectedCat = "all";
+
+    // DOM
+    const startScreen   = document.getElementById("startScreen");
+    const quizScreen    = document.getElementById("quizScreen");
+    const resultScreen  = document.getElementById("resultScreen");
+    const historyScreen = document.getElementById("historyScreen");
+
+    // ---- Category chips ----
+    document.querySelectorAll(".cat-chip").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".cat-chip").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        selectedCat = btn.dataset.cat;
+      });
+    });
+
+    // ---- Start Quiz ----
+    document.getElementById("startQuizBtn").addEventListener("click", startQuiz);
+
+    function startQuiz() {
+      // Filter and shuffle questions
+      let pool = selectedCat === "all"
+        ? [...QUIZ_DATA.questions]
+        : QUIZ_DATA.questions.filter((q) => q.category === selectedCat);
+      questions = shuffleArray(pool).slice(0, 10);
+      currentIdx = 0; score = 0; correct = 0; streak = 0; bestStreak = 0; answered = false;
+
+      startScreen.style.display   = "none";
+      historyScreen.style.display = "none";
+      resultScreen.style.display  = "none";
+      quizScreen.style.display    = "flex";
+
+      document.getElementById("qTotal").textContent = questions.length;
+      showQuestion();
+    }
+
+    // ---- Show question ----
+    function showQuestion() {
+      answered = false;
+      const q = questions[currentIdx];
+      const cat = QUIZ_DATA.categories[q.category];
+
+      // Progress
+      document.getElementById("qNum").textContent = currentIdx + 1;
+      document.getElementById("scoreDisplay").textContent = score;
+      const pct = ((currentIdx) / questions.length) * 100;
+      document.getElementById("quizProgress").style.width = pct + "%";
+
+      // Streak bar
+      const sb = document.getElementById("streakBar");
+      if (streak >= 2) {
+        sb.innerHTML = `<span class="streak-flame">🔥</span><span class="streak-count">${streak}</span><span class="streak-label">streak!</span>`;
+      } else {
+        sb.innerHTML = "";
+      }
+
+      // Category
+      const catEl = document.getElementById("questionCategory");
+      catEl.innerHTML = `<span>${cat.emoji}</span><span style="color:${cat.color}">${cat.label}</span> · <span style="color:var(--paper-faint)">${q.points} pts</span>`;
+
+      // Question
+      document.getElementById("questionText").textContent = q.question;
+
+      // Options
+      const container = document.getElementById("optionsContainer");
+      container.innerHTML = "";
+      q.options.forEach((opt, i) => {
+        const btn = document.createElement("button");
+        btn.className = "option-btn";
+        btn.style.animationDelay = `${i * 0.06}s`;
+        btn.setAttribute("aria-label", `Option ${LETTERS[i]}: ${opt}`);
+        btn.innerHTML = `<span class="option-letter">${LETTERS[i]}</span>${opt}`;
+        btn.addEventListener("click", () => answer(i, q));
+        container.appendChild(btn);
+      });
+
+      // Explanation + Next
+      document.getElementById("explanation").classList.remove("show");
+      document.getElementById("explanation").textContent = "";
+      document.getElementById("nextBtn").style.display = "none";
+    }
+
+    // ---- Answer ----
+    function answer(idx, q) {
+      if (answered) return;
+      answered = true;
+
+      const isCorrect = idx === q.answer;
+      const buttons = document.querySelectorAll(".option-btn");
+
+      buttons.forEach((btn, i) => {
+        btn.disabled = true;
+        if (i === q.answer) btn.classList.add("correct");
+        else if (i === idx && !isCorrect) btn.classList.add("wrong");
+        else btn.classList.add("reveal");
+      });
+
+      if (isCorrect) {
+        score += q.points;
+        correct++;
+        streak++;
+        bestStreak = Math.max(bestStreak, streak);
+      } else {
+        streak = 0;
+      }
+
+      // Explanation
+      const expEl = document.getElementById("explanation");
+      expEl.innerHTML = `<strong>${isCorrect ? "✅ Correct!" : "❌ Not quite."}</strong> ${q.explanation}`;
+      expEl.classList.add("show");
+
+      // Score display
+      document.getElementById("scoreDisplay").textContent = score;
+
+      // Next button
+      const nextBtn = document.getElementById("nextBtn");
+      nextBtn.textContent = currentIdx + 1 < questions.length ? "Next Question →" : "See Results";
+      nextBtn.style.display = "block";
+    }
+
+    // ---- Next ----
+    document.getElementById("nextBtn").addEventListener("click", () => {
+      currentIdx++;
+      if (currentIdx < questions.length) {
+        showQuestion();
+      } else {
+        showResult();
+      }
+    });
+
+    // ---- Result ----
+    function showResult() {
+      quizScreen.style.display = "none";
+      resultScreen.style.display = "flex";
+
+      const total = questions.reduce((sum, q) => sum + q.points, 0);
+      const pct = Math.round((correct / questions.length) * 100);
+
+      document.getElementById("resultScore").textContent = score;
+      document.getElementById("statCorrect").textContent = correct;
+      document.getElementById("statStreak").textContent = bestStreak;
+      document.getElementById("statPct").textContent = pct + "%";
+
+      // Badge
+      const badge = [...BADGES].reverse().find((b) => score >= b.min) || BADGES[0];
+      document.getElementById("resultTrophy").textContent = badge.emoji;
+      document.getElementById("resultBadge").textContent = badge.label;
+      document.getElementById("resultTitle").textContent = pct === 100 ? "Perfect Score! 🎉" : "Quiz Complete!";
+
+      // Save to localStorage
+      const history = JSON.parse(localStorage.getItem("yatri_quiz_history") || "[]");
+      history.unshift({
+        score, correct, total: questions.length, pct, streak: bestStreak,
+        badge: badge.label, date: new Date().toLocaleDateString()
+      });
+      localStorage.setItem("yatri_quiz_history", JSON.stringify(history.slice(0, 10)));
+    }
+
+    // ---- Retry ----
+    document.getElementById("retryBtn").addEventListener("click", () => {
+      resultScreen.style.display = "none";
+      startScreen.style.display  = "flex";
+    });
+
+    // ---- Share ----
+    document.getElementById("shareBtn").addEventListener("click", async () => {
+      const text = `I scored ${score} points on the Nepal Heritage Quiz! Badge: ${document.getElementById("resultBadge").textContent}. Try it on Yatri AR! 🇳🇵`;
+      try {
+        if (navigator.share) {
+          await navigator.share({ title: "Nepal Heritage Quiz", text });
+        } else {
+          await navigator.clipboard.writeText(text);
+          alert("Score copied to clipboard!");
+        }
+      } catch {}
+    });
+
+    // ---- History ----
+    document.getElementById("showHistoryBtn").addEventListener("click", () => {
+      startScreen.style.display   = "none";
+      historyScreen.style.display = "flex";
+      renderHistory();
+    });
+
+    document.getElementById("backFromHistory").addEventListener("click", () => {
+      historyScreen.style.display = "none";
+      startScreen.style.display   = "flex";
+    });
+
+    function renderHistory() {
+      const history = JSON.parse(localStorage.getItem("yatri_quiz_history") || "[]");
+      const list = document.getElementById("historyList");
+      const noHist = document.getElementById("noHistory");
+      list.innerHTML = "";
+      noHist.style.display = history.length ? "none" : "block";
+
+      const best = history.reduce((mx, h) => Math.max(mx, h.score), 0);
+      history.forEach((h) => {
+        const div = document.createElement("div");
+        div.className = "history-item" + (h.score === best ? " best" : "");
+        div.innerHTML = `
+          <div>
+            <div class="hi-score">${h.score} pts</div>
+            <div class="hi-date">${h.date} · ${h.correct}/${h.total} correct · ${h.badge}</div>
+          </div>
+          ${h.score === best ? '<div class="hi-best">🏆</div>' : ""}
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    // Initial
+    startScreen.style.display = "flex";
+  })();
+  </script>
+</body>
+</html>
