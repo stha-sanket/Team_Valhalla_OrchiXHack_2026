@@ -1,0 +1,238 @@
+/* ================================================================
+   Yatri AR — Design System
+   Nepal Heritage AR Tourism Guide
+   ================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Tiro+Devanagari+Sanskrit:ital@0;1&display=swap');
+
+/* ----------------------------------------------------------------
+   1. DESIGN TOKENS
+   ---------------------------------------------------------------- */
+:root {
+  /* Brand palette — inspired by Nepal's cultural colours */
+  --yatri-crimson:    #c0392b;   /* Festival red / Kumkum */
+  --yatri-saffron:    #e67e22;   /* Marigold / Monk robes */
+  --yatri-gold:       #f1c40f;   /* Temple gold ornaments */
+  --yatri-ochre:      #d4a843;   /* Pagoda copper patina */
+  --yatri-teal:       #16a085;   /* Prayer flag teal */
+  --yatri-lapis:      #2980b9;   /* Sacred sky */
+  --yatri-sage:       #27ae60;   /* Himalayan forest */
+
+  /* Neutral palette */
+  --ink:              #0d0b09;
+  --ink-2:            #1a1612;
+  --ink-3:            #242018;
+  --ink-4:            #2e2920;
+  --surface:          #332d23;
+  --surface-2:        #3e3729;
+  --border:           rgba(255, 255, 255, 0.10);
+  --border-warm:      rgba(241, 196, 15, 0.20);
+  --paper:            #f5eedd;
+  --paper-muted:      #c8bfa8;
+  --paper-faint:      #8a8070;
+
+  /* Semantic */
+  --clr-accent:       var(--yatri-gold);
+  --clr-accent-2:     var(--yatri-saffron);
+  --clr-danger:       var(--yatri-crimson);
+  --clr-success:      var(--yatri-sage);
+  --clr-info:         var(--yatri-lapis);
+
+  /* Gradients */
+  --grad-hero:        linear-gradient(145deg, #1a0f00, #0d0b09 40%, #050e1f);
+  --grad-gold:        linear-gradient(135deg, var(--yatri-gold), var(--yatri-saffron));
+  --grad-ember:       linear-gradient(135deg, var(--yatri-saffron), var(--yatri-crimson));
+  --grad-mountain:    linear-gradient(180deg, #050e1f 0%, #0d0b09 60%, #1a0f00 100%);
+  --grad-glass:       linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+
+  /* Typography */
+  --font-sans:        'Inter', system-ui, -apple-system, sans-serif;
+  --font-deva:        'Tiro Devanagari Sanskrit', serif;
+
+  /* Font sizes — fluid via clamp */
+  --fs-xs:            clamp(10px, 2.5vw, 12px);
+  --fs-sm:            clamp(12px, 3vw,   14px);
+  --fs-md:            clamp(14px, 3.5vw, 16px);
+  --fs-lg:            clamp(16px, 4vw,   20px);
+  --fs-xl:            clamp(20px, 5vw,   28px);
+  --fs-2xl:           clamp(28px, 7vw,   42px);
+  --fs-3xl:           clamp(36px, 10vw,  64px);
+
+  /* Spacing */
+  --sp-1:  4px;
+  --sp-2:  8px;
+  --sp-3:  12px;
+  --sp-4:  16px;
+  --sp-5:  24px;
+  --sp-6:  32px;
+  --sp-7:  48px;
+  --sp-8:  64px;
+
+  /* Radius */
+  --r-sm:   8px;
+  --r-md:   14px;
+  --r-lg:   20px;
+  --r-xl:   28px;
+  --r-full: 9999px;
+
+  /* Elevation / shadows */
+  --shadow-sm:    0 2px 8px rgba(0,0,0,0.4);
+  --shadow-md:    0 4px 20px rgba(0,0,0,0.5);
+  --shadow-lg:    0 8px 40px rgba(0,0,0,0.6);
+  --shadow-gold:  0 4px 24px rgba(241,196,15,0.25);
+  --shadow-ember: 0 4px 24px rgba(230,126,34,0.30);
+
+  /* Transitions */
+  --ease-default: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-spring:  cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast:     150ms;
+  --dur-mid:      250ms;
+  --dur-slow:     400ms;
+}
+
+/* ----------------------------------------------------------------
+   2. RESET & BASE
+   ---------------------------------------------------------------- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+img, video, svg { max-width: 100%; display: block; }
+a { color: inherit; text-decoration: none; }
+button, input, select, textarea { font-family: inherit; }
+
+/* ----------------------------------------------------------------
+   3. TYPOGRAPHY SCALE
+   ---------------------------------------------------------------- */
+.text-xs     { font-size: var(--fs-xs); }
+.text-sm     { font-size: var(--fs-sm); }
+.text-md     { font-size: var(--fs-md); }
+.text-lg     { font-size: var(--fs-lg); }
+.text-xl     { font-size: var(--fs-xl); }
+.text-2xl    { font-size: var(--fs-2xl); }
+.text-3xl    { font-size: var(--fs-3xl); }
+
+.font-light  { font-weight: 300; }
+.font-normal { font-weight: 400; }
+.font-medium { font-weight: 500; }
+.font-semi   { font-weight: 600; }
+.font-bold   { font-weight: 700; }
+.font-black  { font-weight: 900; }
+
+.font-deva   { font-family: var(--font-deva); }
+
+.text-gold    { color: var(--yatri-gold); }
+.text-saffron { color: var(--yatri-saffron); }
+.text-muted   { color: var(--paper-muted); }
+.text-faint   { color: var(--paper-faint); }
+.text-center  { text-align: center; }
+.text-upper   { text-transform: uppercase; letter-spacing: 0.12em; }
+
+.eyebrow {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.20em;
+  color: var(--yatri-gold);
+}
+
+/* ----------------------------------------------------------------
+   4. LAYOUT UTILITIES
+   ---------------------------------------------------------------- */
+.container {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 var(--sp-4);
+}
+
+.flex          { display: flex; }
+.flex-col      { flex-direction: column; }
+.items-center  { align-items: center; }
+.items-start   { align-items: flex-start; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.justify-end   { justify-content: flex-end; }
+.gap-1  { gap: var(--sp-1); }
+.gap-2  { gap: var(--sp-2); }
+.gap-3  { gap: var(--sp-3); }
+.gap-4  { gap: var(--sp-4); }
+.gap-5  { gap: var(--sp-5); }
+.flex-1 { flex: 1; }
+.flex-wrap { flex-wrap: wrap; }
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-3); }
+
+/* ----------------------------------------------------------------
+   5. SPACING UTILITIES
+   ---------------------------------------------------------------- */
+.mt-1 { margin-top: var(--sp-1); }
+.mt-2 { margin-top: var(--sp-2); }
+.mt-3 { margin-top: var(--sp-3); }
+.mt-4 { margin-top: var(--sp-4); }
+.mt-5 { margin-top: var(--sp-5); }
+.mb-2 { margin-bottom: var(--sp-2); }
+.mb-3 { margin-bottom: var(--sp-3); }
+.mb-4 { margin-bottom: var(--sp-4); }
+.p-3 { padding: var(--sp-3); }
+.p-4 { padding: var(--sp-4); }
+.p-5 { padding: var(--sp-5); }
+
+/* ----------------------------------------------------------------
+   6. SCROLLBAR (subtle)
+   ---------------------------------------------------------------- */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--ink-2); }
+::-webkit-scrollbar-thumb { background: var(--surface-2); border-radius: var(--r-full); }
+
+/* ----------------------------------------------------------------
+   7. KEYFRAME ANIMATIONS
+   ---------------------------------------------------------------- */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes pulse-ring {
+  0%   { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+@keyframes slide-up {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(241,196,15,0.3); }
+  50%       { box-shadow: 0 0 28px rgba(241,196,15,0.65); }
+}
