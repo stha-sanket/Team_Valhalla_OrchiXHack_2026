@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>AR Navigation — Yatri AR Nepal</title>
+  <meta name="description" content="AR compass navigation to Nepal's heritage sites. Follow the golden arrow to ancient temples and stupas." />
+
+  <!-- A-Frame + AR.js -->
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/design-system.css" />
+  <link rel="stylesheet" href="assets/css/components.css" />
+
+  <style>
+    html, body { margin:0; padding:0; overflow:hidden; height:100%; }
+    a-scene { position:absolute; inset:0; z-index:1; }
+
+    /* ========== GATE (Permission screen) ========== */
+    #gate {
+      position:fixed; inset:0; z-index:100;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      text-align:center; padding:var(--sp-5);
+      background: var(--grad-mountain);
+    }
+
+    .gate-icon {
+      font-size: 72px;
+      margin-bottom: var(--sp-4);
+      animation: float 3s ease-in-out infinite;
+    }
+
+    .gate-eyebrow { color: var(--yatri-gold); font-size: var(--fs-xs); letter-spacing: 0.24em; text-transform:uppercase; font-weight:700; margin-bottom: var(--sp-2); }
+
+    #gate h1 { font-size: var(--fs-2xl); font-weight:900; margin:0 0 var(--sp-3); line-height:1.1; }
+    #gate h1 span { background: var(--grad-gold); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+
+    #gate p { color: var(--paper-muted); max-width:340px; line-height:1.6; font-size:var(--fs-sm); margin-bottom: var(--sp-5); }
+
+    /* Animated compass ring on gate */
+    .gate-compass {
+      width: 100px; height: 100px;
+      border-radius: 50%;
+      border: 2px solid rgba(241,196,15,0.4);
+      position: relative;
+      animation: spin 8s linear infinite;
+      margin: 0 auto var(--sp-5);
+    }
+    .gate-compass::before {
+      content: '';
+      position: absolute;
+      inset: 8px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(241,196,15,0.2);
+      animation: spin 5s linear infinite reverse;
+    }
+    .gate-compass-center {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 36px;
+    }
+
+    #gateError { margin-top: var(--sp-4); color: #e57373; font-size: var(--fs-sm); max-width:320px; display:none; }
+
+    /* ========== LOADING ========== */
+    #loading {
+      position:fixed; inset:0; z-index:90;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      background:var(--ink); gap:var(--sp-4);
+    }
+    #loading.hidden { display:none; }
+    #loading .msg { color: var(--paper-muted); font-size: var(--fs-sm); }
+
+    /* ========== TOP BAR ========== */
+    #topbar {
+      position:fixed; top:0; left:0; right:0; z-index:20;
+      display:flex; gap:var(--sp-2); align-items:center;
+      padding: max(14px, env(safe-area-inset-top)) var(--sp-3) var(--sp-3);
+      background:linear-gradient(rgba(0,0,0,0.7), transparent);
+    }
+
+    #siteSelect {
+      flex:1; min-width:0; padding:11px 14px;
+      border-radius: var(--r-md); border:1px solid rgba(255,255,255,0.15);
+      background:rgba(20,17,13,0.9); color:var(--paper); font-size:var(--fs-sm);
+      -webkit-appearance: none; appearance: none;
+    }
+
+    #goBtn {
+      padding:11px 16px; border-radius:var(--r-md); border:none;
+      font-weight:700; cursor:pointer;
+      background: var(--grad-gold); color:#1a0f00; font-size:var(--fs-sm); white-space:nowrap;
+    }
+    #goBtn:active { transform: scale(0.95); }
+
+    #backBtn {
+      width:42px; height:42px; border-radius:var(--r-md); border:none;
+      background:rgba(20,17,13,0.85); border:1px solid rgba(255,255,255,0.1);
+      color:var(--paper); font-size:18px; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      text-decoration: none;
+    }
+
+    /* ========== HUD — navigation compass ========== */
+    #hud {
+      position:fixed; left:0; right:0; bottom:0; z-index:15;
+      display:flex; flex-direction:column; align-items:center;
+      padding: var(--sp-5) var(--sp-5) max(28px, env(safe-area-inset-bottom));
+      background:linear-gradient(transparent, rgba(0,0,0,0.8) 50%);
+      pointer-events:none;
+    }
+
+    #compassWrap {
+      width:170px; height:170px; border-radius:50%;
+      background:radial-gradient(circle at 50% 40%, rgba(241,196,15,0.12), rgba(0,0,0,0.4));
+      border:1.5px solid rgba(241,196,15,0.3);
+      display:flex; align-items:center; justify-content:center;
+      position:relative; margin-bottom:var(--sp-3);
+      box-shadow: 0 0 40px rgba(0,0,0,0.5), inset 0 0 20px rgba(0,0,0,0.3);
+    }
+
+    /* Tick marks on compass ring */
+    #compassWrap::before {
+      content: '';
+      position: absolute; inset: -8px;
+      border-radius: 50%;
+      border: 1.5px dashed rgba(241,196,15,0.15);
+    }
+
+    #arrowSvg {
+      width:100px; height:100px;
+      transition: transform 0.15s linear;
+      filter: drop-shadow(0 3px 8px rgba(0,0,0,0.6));
+    }
+
+    #arrivedBadge {
+      position:absolute; inset:0; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-size:36px; opacity:0; transition:opacity 0.3s;
+    }
+    #arrivedBadge.show { opacity:1; }
+
+    #distText { font-size:var(--fs-2xl); font-weight:900; color:var(--paper); }
+    #destNameText { font-size:var(--fs-xs); color:var(--yatri-gold); margin-top:2px; text-transform:uppercase; letter-spacing:0.14em; }
+    #compassNote { font-size:11px; color: var(--paper-faint); margin-top:var(--sp-3); max-width:280px; text-align:center; line-height:1.4; }
+
+    /* ========== MISC BADGES ========== */
+    #headingBadge {
+      position:fixed; top:max(76px, calc(env(safe-area-inset-top) + 56px)); right:var(--sp-3); z-index:20;
+      background:rgba(20,17,13,0.8); border:1px solid rgba(255,255,255,0.1);
+      border-radius:var(--r-sm); padding:5px 10px; font-size:10px; color: var(--paper-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    #calibrateBanner {
+      position:fixed; top:max(76px, calc(env(safe-area-inset-top) + 56px)); left:var(--sp-3); right:80px; z-index:21;
+      background:rgba(241,196,15,0.14); border:1px solid rgba(241,196,15,0.35);
+      color:var(--yatri-gold); font-size:11px; padding:8px 12px; border-radius:var(--r-sm);
+      display:none; text-align:center;
+    }
+    #calibrateBanner.show { display:block; }
+
+    /* ========== ARRIVAL SHEET ========== */
+    #arrivalSheet {
+      position:fixed; inset:0; z-index:50;
+      display:flex; align-items:flex-end;
+      pointer-events:none; opacity:0;
+      transition:opacity 0.3s;
+    }
+    #arrivalSheet.show { opacity:1; pointer-events:all; }
+
+    #arrivalCard {
+      width:100%; background: var(--ink-2);
+      border-radius: var(--r-xl) var(--r-xl) 0 0;
+      padding: var(--sp-5);
+      padding-bottom: max(var(--sp-6), env(safe-area-inset-bottom));
+      transform: translateY(100%);
+      transition: transform 0.4s var(--ease-spring);
+      border-top: 1px solid var(--border-warm);
+    }
+    #arrivalSheet.show #arrivalCard { transform: translateY(0); }
+
+    .arrival-header { text-align:center; margin-bottom: var(--sp-4); }
+    .arrival-emoji { font-size: 56px; margin-bottom: var(--sp-2); animation:float 2s ease-in-out infinite; }
+    .arrival-title { font-size: var(--fs-xl); font-weight: 900; margin: 0; }
+    .arrival-sub { color: var(--yatri-gold); font-size: var(--fs-sm); margin-top: 4px; }
+
+    /* ========== ROUTE STEPS (multi-stop) ========== */
+    #routeSteps {
+      position:fixed; top:max(82px, calc(env(safe-area-inset-top) + 62px));
+      left:var(--sp-3); z-index:20;
+      display:flex; flex-direction:column; gap:3px;
+      display:none;
+    }
+    .route-step {
+      display:flex; align-items:center; gap:6px;
+      font-size:11px; padding:5px 10px;
+      background:rgba(20,17,13,0.85); border-radius:var(--r-sm);
+      border:1px solid rgba(255,255,255,0.1);
+      color: var(--paper-muted);
+    }
+    .route-step.active { border-color:var(--yatri-gold); color:var(--paper); font-weight:700; }
+    .route-step.done   { opacity:0.5; text-decoration:line-through; }
+  </style>
+</head>
+<body>
+
+  <!-- ========== GATE ========== -->
+  <div id="gate">
+    <div class="gate-eyebrow">Yatri AR Navigation</div>
+    <div class="gate-compass">
+      <div class="gate-compass-center">📍</div>
+    </div>
+    <h1>Heritage<br /><span>AR Pathfinder</span></h1>
+    <p>Follow a live AR compass arrow through the Kathmandu Valley to ancient temples and stupas. Needs your GPS location and compass.</p>
+    <button id="startBtn" class="btn btn-primary btn-lg" aria-label="Start AR Navigation">
+      🧭 Start Navigating
+    </button>
+    <div id="gateError" role="alert"></div>
+  </div>
+
+  <!-- ========== LOADING ========== -->
+  <div id="loading" class="hidden" role="status" aria-live="polite">
+    <div class="spinner"></div>
+    <div class="msg">Getting your GPS position…</div>
+  </div>
+
+  <!-- ========== TOP BAR ========== -->
+  <div id="topbar">
+    <a href="index.html" id="backBtn" aria-label="Back to home">←</a>
+    <select id="siteSelect" class="input select" aria-label="Select destination site">
+      <!-- Populated by JS -->
+    </select>
+    <button id="goBtn" aria-label="Navigate to selected site">Go →</button>
+  </div>
+
+  <div id="calibrateBanner" role="alert">↺ Wave phone in figure-8 to calibrate compass</div>
+  <div id="headingBadge" aria-label="Current compass heading">— °</div>
+  <div id="routeSteps"></div>
+
+  <!-- ========== HUD ========== -->
+  <div id="hud" aria-label="Navigation HUD">
+    <div id="compassWrap">
+      <svg id="arrowSvg" viewBox="0 0 100 100" aria-hidden="true">
+        <defs>
+          <linearGradient id="arrowGrad" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stop-color="#c97b3d"/>
+            <stop offset="100%" stop-color="#f1c40f"/>
+          </linearGradient>
+        </defs>
+        <polygon points="50,5 80,62 50,48 20,62" fill="url(#arrowGrad)" stroke="#1a0f00" stroke-width="2" stroke-linejoin="round"/>
+        <circle cx="50" cy="72" r="10" fill="#1a0f00" opacity="0.5"/>
+      </svg>
+      <div id="arrivedBadge" aria-hidden="true">🛕</div>
+    </div>
+    <div id="distText" aria-live="polite" aria-label="Distance to destination">— m</div>
+    <div id="destNameText" aria-label="Destination name">Select a site above</div>
+    <div id="compassNote">Point the top of your phone forward and follow the arrow</div>
+  </div>
+
+  <!-- ========== ARRIVAL SHEET ========== -->
+  <div id="arrivalSheet" role="dialog" aria-modal="true" aria-label="You have arrived">
+    <div id="arrivalCard">
+      <div class="arrival-header">
+        <div class="arrival-emoji" id="arrivalEmoji">🛕</div>
+        <h2 class="arrival-title">You've Arrived!</h2>
+        <div class="arrival-sub" id="arrivalSiteName">Temple Name</div>
+      </div>
+      <div id="arrivalDesc" style="font-size:var(--fs-sm);color:var(--paper-muted);line-height:1.6;margin-bottom:var(--sp-5);"></div>
+      <div style="display:flex;gap:var(--sp-3);">
+        <a id="arrivalLearnBtn" href="explore.html" class="btn btn-secondary flex-1">📖 Learn More</a>
+        <button id="arrivalDismiss" class="btn btn-ghost" aria-label="Dismiss arrival card">Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== AR SCENE ========== -->
+  <a-scene
+    vr-mode-ui="enabled: false"
+    arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;"
+    embedded
+    renderer="antialias: true; alpha: true"
+    loading-screen="enabled: false">
+
+    <a-camera
+      id="camera"
+      gps-new-camera="gpsMinDistance: 3"
+      arjs-device-orientation-controls="smoothingFactor: 0.1"
+      look-controls-enabled="false">
+    </a-camera>
+
+    <a-entity id="destinationMarker"></a-entity>
+    <a-entity id="destinationLabel"></a-entity>
+    <a-entity id="pathContainer"></a-entity>
+  </a-scene>
+
+  <script src="assets/js/sites-data.js"></script>
+  <script src="assets/js/geo.js"></script>
+  <script src="assets/js/ar-engine.js"></script>
+  <script>
+  (function () {
+    "use strict";
+
+    // ---- State ----
+    let destLat, destLng, destName, destSite;
+    let userLat = null, userLng = null;
+    let smoothedHeading = null;
+    let firstFixReceived = false;
+    let arrived = false;
+
+    // ---- DOM ----
+    const gate          = document.getElementById("gate");
+    const gateError     = document.getElementById("gateError");
+    const startBtn      = document.getElementById("startBtn");
+    const loading       = document.getElementById("loading");
+    const arrowSvg      = document.getElementById("arrowSvg");
+    const distText      = document.getElementById("distText");
+    const destNameText  = document.getElementById("destNameText");
+    const arrivedBadge  = document.getElementById("arrivedBadge");
+    const headingBadge  = document.getElementById("headingBadge");
+    const calibrateBanner = document.getElementById("calibrateBanner");
+    const siteSelect    = document.getElementById("siteSelect");
+    const goBtn         = document.getElementById("goBtn");
+    const arrivalSheet  = document.getElementById("arrivalSheet");
+    const arrivalSiteName = document.getElementById("arrivalSiteName");
+    const arrivalDesc   = document.getElementById("arrivalDesc");
+    const arrivalEmoji  = document.getElementById("arrivalEmoji");
+    const arrivalLearnBtn = document.getElementById("arrivalLearnBtn");
+    const arrivalDismiss = document.getElementById("arrivalDismiss");
+
+    // ---- Populate site select ----
+    YATRI_SITES.forEach((site) => {
+      const opt = document.createElement("option");
+      opt.value = site.id;
+      opt.textContent = `${site.emoji} ${site.name}`;
+      siteSelect.appendChild(opt);
+    });
+
+    // ---- Pre-select from URL param ----
+    const urlParams = new URLSearchParams(location.search);
+    const preSelected = urlParams.get("site");
+    if (preSelected) {
+      siteSelect.value = preSelected;
+    }
+
+    // ---- Set destination ----
+    function setDestination(siteId) {
+      const site = YATRI_SITES.find((s) => s.id === siteId);
+      if (!site) return;
+      destLat = site.lat; destLng = site.lng; destName = site.name; destSite = site;
+      destNameText.textContent = site.name;
+      arrivedBadge.textContent = site.emoji;
+      arrived = false;
+      arrivedBadge.classList.remove("show");
+      arrowSvg.style.opacity = "1";
+
+      // Update AR pin
+      updateArPin();
+      if (userLat != null) {
+        ArEngine.createWaypointTrail(
+          document.getElementById("pathContainer"),
+          userLat, userLng, destLat, destLng, 7
+        );
+      }
+      updateHud();
+    }
+
+    goBtn.addEventListener("click", () => setDestination(siteSelect.value));
+
+    // ---- HUD update ----
+    function updateHud() {
+      if (userLat == null || smoothedHeading == null) return;
+
+      const distance = GeoUtils.calculateDistance(userLat, userLng, destLat, destLng);
+      const bearing  = GeoUtils.calculateBearing(userLat, userLng, destLat, destLng);
+      let rel = bearing - smoothedHeading;
+      rel = ((rel + 180) % 360 + 360) % 360 - 180;
+
+      arrowSvg.style.transform = `rotate(${rel}deg)`;
+
+      if (distance < 15) {
+        distText.textContent = "You're here! 🎉";
+        distText.style.color = "var(--yatri-sage)";
+        arrivedBadge.classList.add("show");
+        arrowSvg.style.opacity = "0.2";
+        if (!arrived) {
+          arrived = true;
+          onArrival();
+        }
+      } else {
+        arrivedBadge.classList.remove("show");
+        arrowSvg.style.opacity = "1";
+        distText.style.color = "var(--paper)";
+        distText.textContent = GeoUtils.formatDistance(distance);
+      }
+
+      headingBadge.textContent = `${Math.round(smoothedHeading)}°`;
+    }
+
+    // ---- AR Pin ----
+    function updateArPin() {
+      if (!destLat) return;
+      const marker = document.getElementById("destinationMarker");
+      const label  = document.getElementById("destinationLabel");
+      marker.innerHTML = "";
+      label.innerHTML  = "";
+
+      const newMarker = ArEngine.createDestinationMarker(destLat, destLng, destName);
+      const { label: labelEl, text: textEl } = ArEngine.createSiteLabel(destLat, destLng, destName);
+      marker.appendChild(newMarker);
+      label.appendChild(labelEl);
+    }
+
+    // ---- Arrival ----
+    function onArrival() {
+      ArEngine.playArrivalBell();
+      ArEngine.hapticArrival();
+      if (destSite) {
+        arrivalSiteName.textContent = destSite.name;
+        arrivalEmoji.textContent = destSite.emoji;
+        arrivalDesc.textContent = destSite.description.substring(0, 200) + "…";
+        arrivalLearnBtn.href = `explore.html#${destSite.id}`;
+      }
+      arrivalSheet.classList.add("show");
+    }
+
+    arrivalDismiss.addEventListener("click", () => arrivalSheet.classList.remove("show"));
+
+    // ---- Heading ----
+    function applyHeading(raw) {
+      if (raw == null || isNaN(raw)) return;
+      smoothedHeading = GeoUtils.smoothHeading(smoothedHeading, raw, 0.15);
+      updateHud();
+    }
+
+    function onOrientation(e) {
+      if (typeof e.webkitCompassHeading === "number") {
+        applyHeading(e.webkitCompassHeading);
+        calibrateBanner.classList.remove("show");
+      } else if (e.absolute && e.alpha != null) {
+        applyHeading((360 - e.alpha) % 360);
+        calibrateBanner.classList.remove("show");
+      } else if (e.alpha != null) {
+        applyHeading((360 - e.alpha) % 360);
+        calibrateBanner.classList.add("show");
+      }
+    }
+
+    // ---- GPS ----
+    function onPosition(pos) {
+      userLat = pos.coords.latitude;
+      userLng = pos.coords.longitude;
+      if (!firstFixReceived) {
+        firstFixReceived = true;
+        loading.classList.add("hidden");
+        if (destLat) {
+          updateArPin();
+          ArEngine.createWaypointTrail(
+            document.getElementById("pathContainer"),
+            userLat, userLng, destLat, destLng, 7
+          );
+        }
+      }
+      updateHud();
+    }
+
+    function onPositionError(err) {
+      loading.querySelector(".msg").textContent =
+        `GPS error: ${err.message}. Move outdoors and reload.`;
+    }
+
+    // ---- Start ----
+    async function start() {
+      gateError.style.display = "none";
+
+      // iOS permission
+      const granted = await GeoUtils.requestOrientationPermission();
+      if (!granted) {
+        gateError.textContent = "Compass permission denied. The navigation arrow needs it to work.";
+        gateError.style.display = "block";
+        return;
+      }
+
+      if (!("geolocation" in navigator)) {
+        gateError.textContent = "This browser doesn't support geolocation.";
+        gateError.style.display = "block";
+        return;
+      }
+
+      gate.style.display = "none";
+      loading.classList.remove("hidden");
+
+      window.addEventListener("deviceorientationabsolute", onOrientation, true);
+      window.addEventListener("deviceorientation", onOrientation, true);
+
+      navigator.geolocation.watchPosition(onPosition, onPositionError, {
+        enableHighAccuracy: true, maximumAge: 1000, timeout: 20000
+      });
+
+      setTimeout(() => {
+        if (!firstFixReceived) {
+          loading.querySelector(".msg").textContent =
+            "Still waiting for GPS… ensure location access is allowed and you're outdoors.";
+        }
+      }, 12000);
+
+      // Set initial destination
+      setDestination(siteSelect.value || YATRI_SITES[0].id);
+    }
+
+    startBtn.addEventListener("click", start);
+  })();
+  </script>
+</body>
+</html>
