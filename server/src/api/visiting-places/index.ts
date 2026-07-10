@@ -10,7 +10,7 @@ export const meta: RouteMeta = {
   },
   POST: {
     description: 'Create a new visiting place (admin only).',
-    request: { body: { name: 'Krishna Mandir', description: 'A Newari temple', lat: '27.7110', long: '85.3243' } },
+    request: { body: { name: 'Krishna Mandir', description: 'A Newari temple', lat: '27.7110', long: '85.3243', badge: 'https://example.com/badges/krishna-mandir.png' } },
     response: { status: 201, body: { message: 'Place created', place: {} } },
   },
 };
@@ -24,10 +24,10 @@ export const GET = async (_req: Request, res: Response) => {
 
 export const POST = async (req: Request, res: Response) => {
   if ((req as any).user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
-  const { name, description, lat, long } = req.body;
+  const { name, description, lat, long, badge } = req.body;
   if (!name || !description || !lat || !long) {
     return res.status(400).json({ error: 'name, description, lat and long are required' });
   }
-  const place = await VisitingPlace.create({ name, description, lat, long });
+  const place = await VisitingPlace.create({ name, description, lat, long, badge });
   res.status(201).json({ message: 'Place created', place });
 };
