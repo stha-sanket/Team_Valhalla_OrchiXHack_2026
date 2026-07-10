@@ -1,24 +1,18 @@
 import { defineModel } from "express-file-cluster";
 
 export interface VisitingPlaceDocument {
-  start: {
-    lat: String;
-    long: String;
-  };
-  end: {
-    lat: String;
-    long: String;
-  };
-  name: String;
-  description: String;
+  name: string;
+  description: string;
+  lat: string;
+  long: string;
 }
 
 export const VisitingPlace = defineModel<VisitingPlaceDocument>(
   "VisitingPlace",
   {
-    start: { type: "object", required: true },
-    end: { type: "object", required: true },
     name: { type: "string", required: true },
     description: { type: "string", required: true },
+    lat: { type: "string", required: true },
+    long: { type: "string", required: true },
   },
 );
