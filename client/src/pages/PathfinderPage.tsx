@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useGetVisitingPlacesQuery } from '../store/api/visitingPlaceApi';
-import { useStartUserProgressMutation, useGetWsTicketMutation } from '../store/api/userProgressApi';
+import { useStartUserProgressMutation, useGetWsTicketMutation, useGetProgressSummaryQuery } from '../store/api/userProgressApi';
 import { loadScript } from '../lib/loadScript';
 
 const WS_URL = import.meta.env.VITE_WS_URL ?? 'ws://localhost:3000';
@@ -20,9 +21,28 @@ interface ProgressMessage {
   nextWaypoint: NextWaypoint | null;
   distanceMeters: number | null;
   bearingDegrees: number | null;
-  justVisited: boolean;
+  arrived: boolean;
   allVisited: boolean;
 }
+
+interface VisitResultMessage {
+  type: 'visit_result';
+  confirmed: boolean;
+  reason?: string;
+  route_id?: string;
+}
+
+interface MediaOverlay {
+  kind: 'image' | 'video';
+  waypoint: NextWaypoint;
+}
+
+const isVideoUrl = (url?: string) =>
+  !!url && (/\.(mp4|webm|mov)(\?|#|$)/i.test(url) || url.includes('/video/upload'));
+
+const SIDE_QUEST_SECONDS = 5 * 60;
+
+const formatSeconds = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
 type Phase = 'gate' | 'loading' | 'active';
 
@@ -38,28 +58,27 @@ const AR_SCENE_HTML = `
     <a-camera
       id="camera"
       gps-new-camera="gpsMinDistance: 3"
-      arjs-device-orientation-controls="smoothingFactor: 0.1"
+      arjs-device-orientation-controls="smoothingFactor: 0.8"
       look-controls-enabled="false">
     </a-camera>
-    <a-entity id="destinationMarker">
-      <a-cylinder radius="0.5" height="0.1" color="#2FA98F"></a-cylinder>
-      <a-cylinder radius="0.13" height="1.1" color="#2FA98F" position="0 0.55 0"></a-cylinder>
-      <a-cone radius-bottom="0.55" radius-top="0" height="0.5" color="#1C7FA6" position="0 1.35 0"></a-cone>
-      <a-sphere radius="0.14" color="#0F5EAB" position="0 1.68 0"></a-sphere>
-      <a-ring radius-inner="0.5" radius-outer="0.65" color="#0F5EAB" opacity="0.55" position="0 0.06 0"
-        animation="property: scale; from: 1 1 1; to: 2.1 2.1 2.1; dur: 1800; loop: true; easing: easeOutQuad"
-        animation__fade="property: opacity; from: 0.55; to: 0; dur: 1800; loop: true; easing: easeOutQuad">
-      </a-ring>
-    </a-entity>
-    <a-entity id="destinationLabel" position="0 2.6 0" look-at="[gps-new-camera]">
-      <a-text id="destText" value="" color="#F4ECDC" align="center" scale="4 4 4" font="mozillavr"></a-text>
-      <a-text value="▼" color="#0F5EAB" align="center" scale="3 3 3" position="0 -0.8 0"></a-text>
-    </a-entity>
   </a-scene>
 `;
 
+const DEMO_WAYPOINTS: NextWaypoint[] = [
+  { id: 'demo-0', name: 'Orchid College of Management', description: 'The starting point of your campus tour.', type: 'start', media: 'https://res.cloudinary.com/drddkl4on/image/upload/v1783706336/64956ae6-cf4c-42cc-bbe9-766432afd993.png', index: 0, coordinates: { lat: '27.702018', long: '85.348198' } },
+  { id: 'demo-1', name: 'Right Turn', description: 'Turn right from here to head towards the parking area.', type: 'node', media: 'https://res.cloudinary.com/drddkl4on/image/upload/v1783706432/7476da40-c525-4e1f-aad4-7203aa09ee01.png', index: 1, coordinates: { lat: '27.702294', long: '85.347675' } },
+  { id: 'demo-2', name: 'Orchid Parking Area', description: 'Explore the Orchid Parking Area and watch the story.', type: 'milestone', media: 'https://res.cloudinary.com/drddkl4on/video/upload/v1783706749/random_d4qr3i.mp4', index: 2, coordinates: { lat: '27.701960', long: '85.347353' } },
+  { id: 'demo-3', name: 'Left Turn', description: 'Turn left here to continue towards the medical hall.', type: 'node', media: 'https://res.cloudinary.com/drddkl4on/image/upload/v1783706432/7476da40-c525-4e1f-aad4-7203aa09ee01.png', index: 3, coordinates: { lat: '27.701961', long: '85.347259' } },
+  { id: 'demo-4', name: 'Bishwajit Medical Hall', description: 'A side quest awaits — discover this local landmark!', type: 'side_quest', media: 'https://res.cloudinary.com/drddkl4on/video/upload/v1783706985/random2_la9nih.mp4', index: 4, coordinates: { lat: '27.702062', long: '85.347112' } },
+  { id: 'demo-5', name: 'Left Turn', description: 'Turn left here towards Orchid International College.', type: 'node', media: 'https://res.cloudinary.com/drddkl4on/image/upload/v1783707271/8316b035-d76b-4d7b-b29e-1d4b2c253c8a.png', index: 5, coordinates: { lat: '27.702437', long: '85.346749' } },
+  { id: 'demo-6', name: 'Orchid International College', description: 'Visit Orchid International College and learn its history.', type: 'milestone', media: 'https://res.cloudinary.com/drddkl4on/video/upload/v1783707578/Abinash_Adhikari____Student_s_Testimonial_2____University_Topper_2080____TU_Top____acn2qz.mp4', index: 6, coordinates: { lat: '27.702317', long: '85.346659' } },
+  { id: 'demo-7', name: 'Orchid International College', description: 'You have reached the end of the tour. Congratulations!', type: 'end', media: 'https://res.cloudinary.com/drddkl4on/image/upload/v1783707675/61950144-b202-443d-ae8b-8d6b2c01e482.png', index: 7, coordinates: { lat: '27.702247', long: '85.346473' } },
+];
+
 const PathfinderPage = () => {
+  const navigate = useNavigate();
   const { data: placesData } = useGetVisitingPlacesQuery();
+  const { data: summaryData } = useGetProgressSummaryQuery(undefined, { refetchOnMountOrArgChange: true });
   const [startProgress] = useStartUserProgressMutation();
   const [getTicket] = useGetWsTicketMutation();
 
@@ -71,6 +90,15 @@ const PathfinderPage = () => {
   const [headingDisplay, setHeadingDisplay] = useState<number | null>(null);
   const [arReady, setArReady] = useState(false);
   const [arError, setArError] = useState<string | null>(null);
+  const [dismissedWaypointId, setDismissedWaypointId] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const [mediaOverlay, setMediaOverlay] = useState<MediaOverlay | null>(null);
+  const [videoEnded, setVideoEnded] = useState(false);
+  const [videoNeedsTap, setVideoNeedsTap] = useState(false);
+  const [sideQuestSecondsLeft, setSideQuestSecondsLeft] = useState<number | null>(null);
+  const [isDemoMode, setIsDemoMode] = useState(false);
+  const [demoIdx, setDemoIdx] = useState(0);
 
   const wsRef = useRef<WebSocket | null>(null);
   const watchIdRef = useRef<number | null>(null);
@@ -78,18 +106,28 @@ const PathfinderPage = () => {
   const arrowSvgRef = useRef<SVGSVGElement | null>(null);
   const distTextRef = useRef<HTMLDivElement | null>(null);
   const progressMsgRef = useRef<ProgressMessage | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The handler identity changes every render — keep the reference that was
+  // actually registered so removeEventListener detaches the right one.
+  const orientationHandlerRef = useRef<((e: DeviceOrientationEvent) => void) | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const arVideoEntityRef = useRef<HTMLElement | null>(null);
+  const sideQuestIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Waypoints whose video already auto-started — arrival messages keep coming
+  // while standing in range, and the video must not restart on each one.
+  const autoPlayedIdRef = useRef<string | null>(null);
+
+  const showToast = (text: string) => {
+    setToast(text);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(null), 3500);
+  };
 
   useEffect(() => {
     progressMsgRef.current = progressMsg;
   }, [progressMsg]);
 
   const places = placesData?.places ?? [];
-
-  useEffect(() => {
-    if (places.length > 0 && !selectedPlaceId) {
-      setSelectedPlaceId(places[0].id);
-    }
-  }, [places, selectedPlaceId]);
 
   // ------------------------------------------------------------------
   // HUD ARROW — imperative on purpose. bearingDegrees comes from the
@@ -106,7 +144,7 @@ const PathfinderPage = () => {
     if (!msg || msg.allVisited || msg.distanceMeters == null || msg.bearingDegrees == null || heading == null) {
       if (msg?.allVisited) {
         distTextRef.current.textContent = "You've arrived";
-        distTextRef.current.style.color = '#2FA98F';
+        distTextRef.current.style.color = '#E8506D';
       }
       return;
     }
@@ -120,17 +158,97 @@ const PathfinderPage = () => {
 
   useEffect(() => {
     updateArrow();
-    if (progressMsg?.nextWaypoint && arReady) {
-      const marker = document.getElementById('destinationMarker');
-      const label = document.getElementById('destinationLabel');
-      const destText = document.getElementById('destText');
-      const { lat, long } = progressMsg.nextWaypoint.coordinates;
-      marker?.setAttribute('gps-new-entity-place', `latitude: ${lat}; longitude: ${long}`);
-      label?.setAttribute('gps-new-entity-place', `latitude: ${lat}; longitude: ${long}`);
-      destText?.setAttribute('value', progressMsg.nextWaypoint.name);
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [progressMsg, arReady]);
+  }, [progressMsg]);
+
+  // Milestones and side quests carry a video: it starts playing on arrival, and
+  // the confirm actions only appear once the video has finished.
+  useEffect(() => {
+    const wp = progressMsg?.nextWaypoint;
+    if (!progressMsg?.arrived || !wp) return;
+    if ((wp.type === 'milestone' || wp.type === 'side_quest') && isVideoUrl(wp.media) && autoPlayedIdRef.current !== wp.id) {
+      autoPlayedIdRef.current = wp.id;
+      setVideoEnded(false);
+      setMediaOverlay({ kind: 'video', waypoint: wp });
+    }
+  }, [progressMsg]);
+
+  // Mobile browsers may refuse autoplay with sound — fall back to a tap-to-play button.
+  useEffect(() => {
+    if (mediaOverlay?.kind !== 'video') return;
+    const v = videoRef.current;
+    if (!v) return;
+    v.currentTime = 0;
+    v.play()
+      .then(() => setVideoNeedsTap(false))
+      .catch(() => setVideoNeedsTap(true));
+  }, [mediaOverlay]);
+
+  // Anchor the video in AR space, immune to GPS: its ROTATION is fixed in world
+  // space (looking around pans off it, like a real anchored object), but its
+  // POSITION is re-glued to a constant offset from the camera every frame. The
+  // gps-new-camera component teleports the camera on GPS updates — following
+  // its translation keeps the plane exactly 4 m from the user's initial POV
+  // instead of drifting with satellite jitter.
+  useEffect(() => {
+    if (mediaOverlay?.kind !== 'video' || !arReady) return;
+    const scene = document.querySelector('a-scene') as (HTMLElement & { hasLoaded?: boolean }) | null;
+    const cameraEl = document.getElementById('camera') as (HTMLElement & { object3D?: any }) | null;
+    if (!scene || !cameraEl) return;
+
+    let rafId: number | null = null;
+
+    const spawn = () => {
+      const THREE = (window as any).THREE;
+      const camObj = cameraEl.object3D;
+      if (!THREE || !camObj) return;
+
+      const camPos = new THREE.Vector3();
+      camObj.getWorldPosition(camPos);
+      const quat = new THREE.Quaternion();
+      camObj.getWorldQuaternion(quat);
+      // Project the view direction onto the horizontal plane so the video sits
+      // upright at eye height even if the phone is tilted at spawn time.
+      const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(quat);
+      dir.y = 0;
+      if (dir.lengthSq() < 0.0001) dir.set(0, 0, -1);
+      dir.normalize();
+      const offset = dir.multiplyScalar(4); // constant camera→video offset
+      const pos = camPos.clone().add(offset);
+
+      const entity = document.createElement('a-video') as HTMLElement & { object3D?: any };
+      // Unique per waypoint: A-Frame caches video textures by selector string,
+      // so reusing one id would replay the PREVIOUS video's frozen texture.
+      entity.setAttribute('src', `#ar-video-src-${mediaOverlay.waypoint.id}`);
+      entity.setAttribute('width', '3.55');
+      entity.setAttribute('height', '2');
+      entity.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
+      entity.addEventListener('loaded', () => {
+        entity.object3D?.lookAt(camPos); // orientation set once, then frozen
+      });
+      scene.appendChild(entity);
+      arVideoEntityRef.current = entity;
+
+      const follow = () => {
+        const obj = entity.object3D;
+        if (obj) {
+          camObj.getWorldPosition(camPos);
+          obj.position.set(camPos.x + offset.x, camPos.y + offset.y, camPos.z + offset.z);
+        }
+        rafId = requestAnimationFrame(follow);
+      };
+      rafId = requestAnimationFrame(follow);
+    };
+
+    if (scene.hasLoaded) spawn();
+    else scene.addEventListener('loaded', spawn, { once: true });
+
+    return () => {
+      if (rafId != null) cancelAnimationFrame(rafId);
+      arVideoEntityRef.current?.remove();
+      arVideoEntityRef.current = null;
+    };
+  }, [mediaOverlay, arReady]);
 
   const applyHeading = (rawHeading: number) => {
     if (rawHeading == null || Number.isNaN(rawHeading)) return;
@@ -169,8 +287,19 @@ const PathfinderPage = () => {
 
     ws.onmessage = (event) => {
       try {
-        const msg = JSON.parse(event.data) as ProgressMessage;
-        if (msg.type === 'progress') setProgressMsg(msg);
+        const msg = JSON.parse(event.data) as ProgressMessage | VisitResultMessage;
+        if (msg.type === 'progress') {
+          setProgressMsg(msg);
+          // Once we walk out of range, allow the prompt to reappear on the next arrival.
+          if (!msg.arrived) setDismissedWaypointId(null);
+        } else if (msg.type === 'visit_result') {
+          setConfirming(false);
+          if (msg.confirmed) {
+            showToast('Checkpoint reached! 🎉');
+          } else if (msg.reason) {
+            showToast(msg.reason);
+          }
+        }
       } catch {
         // ignore malformed frames
       }
@@ -187,15 +316,14 @@ const PathfinderPage = () => {
         { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 },
       );
       setPhase('active');
+      // AppLayout hides the dock while this param is present.
+      navigate('/explore?ar=1', { replace: true });
     };
   };
 
-  const start = async () => {
+  const start = async (placeId: string) => {
     setGateError(null);
-    if (!selectedPlaceId) {
-      setGateError('No destination available yet.');
-      return;
-    }
+    setSelectedPlaceId(placeId);
 
     try {
       const DOE = window.DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> };
@@ -217,6 +345,7 @@ const PathfinderPage = () => {
     }
 
     setPhase('loading');
+    orientationHandlerRef.current = onOrientation;
     window.addEventListener('deviceorientationabsolute', onOrientation, true);
     window.addEventListener('deviceorientation', onOrientation, true);
 
@@ -231,7 +360,6 @@ const PathfinderPage = () => {
         await loadScript('/vendor/aframe.min.js');
         await loadScript('/vendor/ar-threex-location-only.js');
         await loadScript('/vendor/aframe-ar.js');
-        await loadScript('/vendor/aframe-look-at-component.min.js');
         setArReady(true);
       } catch (e) {
         console.error('AR.js failed to load:', e);
@@ -239,7 +367,7 @@ const PathfinderPage = () => {
       }
     }
 
-    connectWebSocket(selectedPlaceId).catch((e) => {
+    connectWebSocket(placeId).catch((e) => {
       setGateError(e instanceof Error ? e.message : 'Failed to start navigation.');
       setPhase('gate');
     });
@@ -268,75 +396,324 @@ const PathfinderPage = () => {
     };
   }, [arReady]);
 
+  const stopNavigation = () => {
+    wsRef.current?.close();
+    wsRef.current = null;
+    if (watchIdRef.current != null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    if (sideQuestIntervalRef.current) {
+      clearInterval(sideQuestIntervalRef.current);
+      sideQuestIntervalRef.current = null;
+    }
+    if (orientationHandlerRef.current) {
+      window.removeEventListener('deviceorientationabsolute', orientationHandlerRef.current, true);
+      window.removeEventListener('deviceorientation', orientationHandlerRef.current, true);
+      orientationHandlerRef.current = null;
+    }
+  };
+
+  const exitNavigation = () => {
+    stopNavigation();
+    smoothedHeadingRef.current = null;
+    setHeadingDisplay(null);
+    setCalibrating(false);
+    setArReady(false); // unmounts the a-scene via the arReady effect cleanup
+    setArError(null);
+    setProgressMsg(null);
+    setDismissedWaypointId(null);
+    setConfirming(false);
+    setToast(null);
+    setMediaOverlay(null);
+    setVideoEnded(false);
+    setVideoNeedsTap(false);
+    setSideQuestSecondsLeft(null);
+    autoPlayedIdRef.current = null;
+    setIsDemoMode(false);
+    setDemoIdx(0);
+    setPhase('gate');
+    navigate('/explore', { replace: true });
+  };
+
   useEffect(() => {
-    return () => {
-      wsRef.current?.close();
-      if (watchIdRef.current != null) navigator.geolocation.clearWatch(watchIdRef.current);
-      window.removeEventListener('deviceorientationabsolute', onOrientation, true);
-      window.removeEventListener('deviceorientation', onOrientation, true);
-    };
+    return stopNavigation;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const selectedPlace = places.find((p) => p.id === selectedPlaceId);
+  const sendConfirm = (routeId: string) => {
+    if (isDemoMode) {
+      setConfirming(false);
+      setDemoIdx((prev) => {
+        const next = prev + 1;
+        if (next >= DEMO_WAYPOINTS.length) {
+          setProgressMsg({ type: 'progress', nextWaypoint: null, distanceMeters: null, bearingDegrees: null, arrived: false, allVisited: true });
+        } else {
+          setProgressMsg({ type: 'progress', nextWaypoint: DEMO_WAYPOINTS[next], distanceMeters: 120, bearingDegrees: 45, arrived: false, allVisited: false });
+        }
+        return next;
+      });
+      return;
+    }
+    const ws = wsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    setConfirming(true);
+    ws.send(JSON.stringify({ type: 'confirm_visit', route_id: routeId }));
+  };
+
+  // "I am here" — confirm the checkpoint and reveal its image (e.g. turn directions).
+  const confirmArrival = () => {
+    const wp = progressMsgRef.current?.nextWaypoint;
+    if (!wp) return;
+    sendConfirm(wp.id);
+    if (wp.media && !isVideoUrl(wp.media)) {
+      setMediaOverlay({ kind: 'image', waypoint: wp });
+    }
+  };
+
+  const replayVideo = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.currentTime = 0;
+    v.play().catch(() => setVideoNeedsTap(true));
+    setVideoEnded(false);
+  };
+
+  // Accepting the side quest starts a minimum-stay countdown; the checkpoint is
+  // only confirmed once the full time has been spent there.
+  const startSideQuest = (wp: NextWaypoint) => {
+    setMediaOverlay(null);
+    setSideQuestSecondsLeft(SIDE_QUEST_SECONDS);
+    if (sideQuestIntervalRef.current) clearInterval(sideQuestIntervalRef.current);
+    sideQuestIntervalRef.current = setInterval(() => {
+      setSideQuestSecondsLeft((prev) => {
+        if (prev == null) return null;
+        if (prev <= 1) {
+          if (sideQuestIntervalRef.current) clearInterval(sideQuestIntervalRef.current);
+          sideQuestIntervalRef.current = null;
+          sendConfirm(wp.id);
+          showToast('Side quest complete! 🎉');
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const startDemo = async () => {
+    setIsDemoMode(true);
+    setSelectedPlaceId('demo');
+    setDemoIdx(0);
+
+    // Request iOS compass permission if needed
+    try {
+      const DOE = window.DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> };
+      if (typeof DOE?.requestPermission === 'function') {
+        const result = await DOE.requestPermission();
+        if (result !== 'granted') {
+          setGateError("Compass permission was denied.");
+          setIsDemoMode(false);
+          return;
+        }
+      }
+    } catch { /* non-iOS */ }
+
+    setPhase('loading');
+    orientationHandlerRef.current = onOrientation;
+    window.addEventListener('deviceorientationabsolute', onOrientation, true);
+    window.addEventListener('deviceorientation', onOrientation, true);
+
+    // Load AR camera — same as real mode
+    if (!window.isSecureContext) {
+      setArError('Camera needs HTTPS — HUD compass still active.');
+    } else {
+      try {
+        await loadScript('/vendor/aframe.min.js');
+        await loadScript('/vendor/ar-threex-location-only.js');
+        await loadScript('/vendor/aframe-ar.js');
+        setArReady(true);
+      } catch (e) {
+        console.error('AR.js failed to load:', e);
+        setArError('AR camera failed to load — HUD compass still active.');
+      }
+    }
+
+    setPhase('active');
+    navigate('/explore?ar=1', { replace: true });
+    setProgressMsg({ type: 'progress', nextWaypoint: DEMO_WAYPOINTS[0], distanceMeters: 120, bearingDegrees: 45, arrived: false, allVisited: false });
+  };
+
+  const simulateArrival = () => {
+    const wp = DEMO_WAYPOINTS[demoIdx];
+    if (!wp) return;
+    setProgressMsg({ type: 'progress', nextWaypoint: wp, distanceMeters: 5, bearingDegrees: 45, arrived: true, allVisited: false });
+  };
+
+  const selectedPlace = isDemoMode
+    ? { id: 'demo', name: 'Orchid College Route (Demo)' }
+    : places.find((p) => p.id === selectedPlaceId);
+
+  const nextWaypoint = progressMsg?.nextWaypoint ?? null;
+  // Video waypoints (milestones, side quests) run their own arrival flow.
+  const isVideoWaypoint =
+    !!nextWaypoint && (nextWaypoint.type === 'milestone' || nextWaypoint.type === 'side_quest') && isVideoUrl(nextWaypoint.media);
+  const showArrivalPrompt =
+    !!progressMsg?.arrived &&
+    !!nextWaypoint &&
+    !progressMsg.allVisited &&
+    dismissedWaypointId !== nextWaypoint.id &&
+    !isVideoWaypoint &&
+    !mediaOverlay &&
+    sideQuestSecondsLeft == null;
 
   if (phase === 'gate') {
+    const trips = summaryData?.trips ?? [];
+    const tripByPlaceId = new Map(trips.map((t) => [t.place.id, t]));
+
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center">
-        <p className="text-highlight1 text-xs font-bold tracking-widest uppercase mb-3">Kathmandu Valley</p>
-        <h1 className="text-2xl font-bold text-stone-900 dark:text-white mb-2">Heritage AR Pathfinder</h1>
-        <p className="text-stone-500 dark:text-stone-400 text-sm max-w-sm mb-6">
-          Follow a live compass arrow (and an AR pin) through the valley to heritage sites. Needs your location and compass — best used outdoors.
-        </p>
-
-        <select
-          value={selectedPlaceId}
-          onChange={(e) => setSelectedPlaceId(e.target.value)}
-          className="w-full max-w-xs bg-white/50 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-stone-900 dark:text-white rounded-md px-3 py-2 text-sm mb-4 focus:outline-none focus:border-highlight1"
-        >
-          {places.length === 0 && <option>No places yet</option>}
-          {places.map((p) => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </select>
-
-        <button
-          type="button"
-          onClick={start}
-          disabled={places.length === 0}
-          className="px-8 py-3 rounded-full bg-highlight1 text-white font-semibold shadow-lg shadow-highlight1/30 hover:shadow-highlight1/50 transition-all disabled:opacity-60"
-        >
-          Start Navigating
-        </button>
+      <div className="min-h-screen bg-stone-50 dark:bg-[#17140F]">
+      <div className="max-w-md mx-auto px-5 pt-10 pb-32">
+        <header className="mb-8">
+          <p className="text-crimson-500 dark:text-crimson-400 text-xs font-bold tracking-widest uppercase mb-2">Kathmandu Valley</p>
+          <h1 className="text-2xl font-bold text-stone-900 dark:text-white mb-1">Explore</h1>
+          <p className="text-sm text-stone-500 dark:text-stone-400">
+            Pick a heritage site and follow the live compass arrow. Needs your location and compass — best used outdoors.
+          </p>
+        </header>
 
         {gateError && (
-          <p className="mt-4 text-sm text-red-600 dark:text-red-400 max-w-xs">{gateError}</p>
+          <div className="mb-4 px-4 py-3 rounded-2xl bg-crimson-50 dark:bg-crimson-500/10 border border-crimson-200 dark:border-crimson-500/30 text-sm text-crimson-600 dark:text-crimson-300">
+            {gateError}
+          </div>
         )}
+
+        {/* Demo mode entry */}
+        <button
+          type="button"
+          id="demo-mode-btn"
+          onClick={startDemo}
+          className="w-full text-left bg-gradient-to-br from-navy-500/10 to-crimson-500/10 dark:from-navy-500/20 dark:to-crimson-500/20 backdrop-blur-2xl rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_40px_rgba(0,0,0,0.4)] border border-crimson-300/30 dark:border-crimson-500/25 p-5 mb-5 active:scale-[0.98] transition-transform"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🎮</span>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-base font-bold text-stone-900 dark:text-white">Demo Mode</h3>
+              <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">Walk through the Orchid route — no GPS needed. Tap to simulate each stop.</p>
+            </div>
+            <div className="shrink-0 px-2.5 py-1 rounded-full bg-crimson-500/15 text-crimson-500 dark:text-crimson-400 text-xs font-bold">TRY</div>
+          </div>
+        </button>
+
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-stone-400 dark:text-stone-500 mb-3">Destinations</h2>
+
+        {places.length === 0 ? (
+          <div className="bg-white/70 dark:bg-black/60 backdrop-blur-2xl rounded-2xl border border-white/50 dark:border-white/10 p-6 text-center">
+            <p className="text-sm text-stone-500 dark:text-stone-400">No destinations yet — check back soon.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {places.map((p) => {
+              const trip = tripByPlaceId.get(p.id);
+              const percent = trip && trip.total_points > 0 ? Math.round((trip.visited_points / trip.total_points) * 100) : null;
+
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => start(p.id)}
+                  className="w-full text-left bg-white/70 dark:bg-black/60 backdrop-blur-2xl rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_40px_rgba(0,0,0,0.4)] border border-white/50 dark:border-white/10 p-5 active:scale-[0.98] transition-transform"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-base font-bold text-stone-900 dark:text-white truncate">{p.name}</h3>
+                      <p className="text-sm text-stone-500 dark:text-stone-400 line-clamp-2 mt-0.5">{p.description}</p>
+                    </div>
+                    <div className="shrink-0 w-9 h-9 rounded-full bg-gradient-to-br from-crimson-500 to-crimson-700 text-white flex items-center justify-center shadow-lg shadow-crimson-500/30">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                  </div>
+
+                  {trip && percent != null && (
+                    <div className="mt-4">
+                      <div className="relative h-2 rounded-full bg-stone-200 dark:bg-white/10">
+                        <div
+                          className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-crimson-500 to-crimson-700"
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between mt-1.5">
+                        <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                          {trip.visited_points} of {trip.total_points} stops · {percent === 100 ? 'completed' : percent === 0 ? 'not started' : 'continue trip'}
+                        </p>
+                        {trip.badge_earned && (
+                          <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-navy-50 dark:bg-navy-500/25 text-navy-500 dark:text-navy-200">
+                            Badge earned
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
       </div>
     );
   }
 
   if (phase === 'loading') {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-        <div className="w-9 h-9 rounded-full border-3 border-highlight1/20 border-t-highlight1 animate-spin" />
+      <div className="min-h-screen bg-stone-50 dark:bg-[#17140F] flex flex-col items-center justify-center gap-4">
+        <div className="w-9 h-9 rounded-full border-3 border-crimson-500/20 border-t-crimson-500 animate-spin" />
         <p className="text-stone-500 dark:text-stone-400 text-sm">Getting your position...</p>
       </div>
     );
   }
 
   return (
-    <div className={`relative min-h-screen overflow-hidden pb-28 ${arReady ? '' : 'bg-black'}`}>
+    // h-dvh (not min-h-screen): 100vh overflows behind mobile browser toolbars,
+    // which cut off the bottom-anchored sheets. dvh tracks the visible viewport.
+    <div className={`relative h-dvh overflow-hidden ${arReady ? '' : 'bg-black'}`}>
       {/*
         The <a-scene> is mounted directly under <body> (see the arReady effect), after
         this wrapper in DOM order, so its fixed fullscreen canvas paints over the page
         background. HUD elements below carry z-20 to stay above the canvas.
       */}
 
-      <div className="absolute top-0 left-0 right-0 z-20 flex gap-2 p-3 bg-gradient-to-b from-black/65 to-transparent">
+      <div className="absolute top-0 left-0 right-0 z-20 flex items-center gap-2 p-3 bg-gradient-to-b from-black/65 to-transparent">
+        <button
+          type="button"
+          onClick={exitNavigation}
+          aria-label="End navigation"
+          className="shrink-0 w-10 h-10 rounded-full bg-black/70 border border-white/15 text-white flex items-center justify-center active:scale-95 transition-transform"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
         <span className="flex-1 px-3 py-2.5 rounded-md bg-black/70 border border-white/15 text-white text-sm truncate">
           {selectedPlace?.name}
         </span>
       </div>
+
+      {/* Demo mode: simulate arrival button */}
+      {isDemoMode && !mediaOverlay && !progressMsg?.arrived && !progressMsg?.allVisited && (
+        <div className="absolute top-16 left-0 right-0 z-20 flex justify-center pt-2">
+          <button
+            id="simulate-arrival-btn"
+            type="button"
+            onClick={simulateArrival}
+            className="px-5 py-2.5 rounded-full bg-gradient-to-r from-navy-500 to-crimson-600 text-white text-sm font-bold shadow-lg shadow-crimson-500/30 active:scale-95 transition-transform flex items-center gap-2"
+          >
+            <span>📍</span> Simulate Arrival at <span className="italic">{DEMO_WAYPOINTS[demoIdx]?.name ?? 'next stop'}</span>
+          </button>
+        </div>
+      )}
 
       {arError && (
         <div className="absolute top-20 left-3 right-3 z-20 bg-red-500/15 border border-red-500/40 text-red-300 text-xs px-3 py-2 rounded-md text-center">
@@ -344,8 +721,25 @@ const PathfinderPage = () => {
         </div>
       )}
       {calibrating && (
-        <div className="absolute top-20 left-3 right-3 z-20 bg-highlight1/15 border border-highlight1/40 text-highlight1 text-xs px-3 py-2 rounded-md text-center">
+        <div className="absolute top-20 left-3 right-3 z-20 bg-crimson-500/15 border border-crimson-500/40 text-crimson-300 text-xs px-3 py-2 rounded-md text-center">
           ↺ Wave your phone in a figure-8 to calibrate the compass
+        </div>
+      )}
+      {isDemoMode && (
+        <div className="absolute top-20 right-3 z-20 bg-crimson-500/20 border border-crimson-400/40 text-crimson-300 text-xs font-bold px-2.5 py-1.5 rounded-md">
+          DEMO
+        </div>
+      )}
+      {sideQuestSecondsLeft != null && (
+        <div className="absolute top-20 left-3 right-3 z-20 bg-navy-500/25 border border-navy-300/40 text-navy-100 text-xs font-medium px-3 py-2 rounded-md text-center">
+          Side quest in progress — {formatSeconds(sideQuestSecondsLeft)} left. Stick around!
+        </div>
+      )}
+      {toast && (
+        <div className="absolute top-32 left-4 right-4 z-30 flex justify-center">
+          <div className="bg-white/85 dark:bg-black/75 backdrop-blur-2xl border border-white/50 dark:border-white/10 text-stone-900 dark:text-white text-sm font-medium px-4 py-2.5 rounded-full shadow-lg">
+            {toast}
+          </div>
         </div>
       )}
       {headingDisplay != null && (
@@ -354,13 +748,13 @@ const PathfinderPage = () => {
         </div>
       )}
 
-      <div className="absolute left-0 right-0 bottom-24 z-20 flex flex-col items-center px-4 pointer-events-none">
-        <div className="w-36 h-36 rounded-full flex items-center justify-center relative mb-2 border border-highlight1/35" style={{ background: 'radial-gradient(circle at 50% 40%, rgba(47,169,143,0.14), rgba(0,0,0,0.35))' }}>
+      <div className={`absolute left-0 right-0 bottom-10 z-20 flex flex-col items-center px-4 pointer-events-none ${showArrivalPrompt || mediaOverlay ? 'invisible' : ''}`}>
+        <div className="w-36 h-36 rounded-full flex items-center justify-center relative mb-2 border border-crimson-500/35" style={{ background: 'radial-gradient(circle at 50% 40%, rgba(220,20,60,0.14), rgba(0,0,0,0.35))' }}>
           <svg ref={arrowSvgRef} viewBox="0 0 100 100" className="w-20 h-20 transition-transform duration-150" style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.5))' }}>
             <defs>
               <linearGradient id="arrowGrad" x1="0" y1="1" x2="0" y2="0">
-                <stop offset="0%" stopColor="#1C7FA6" />
-                <stop offset="100%" stopColor="#2FA98F" />
+                <stop offset="0%" stopColor="#003893" />
+                <stop offset="100%" stopColor="#DC143C" />
               </linearGradient>
             </defs>
             <polygon points="50,6 78,62 50,48 22,62" fill="url(#arrowGrad)" stroke="#17140F" strokeWidth={2} strokeLinejoin="round" />
@@ -368,11 +762,180 @@ const PathfinderPage = () => {
           </svg>
         </div>
         <div ref={distTextRef} className="text-xl font-bold text-white">— m</div>
-        {progressMsg?.nextWaypoint && !progressMsg.allVisited && (
-          <div className="text-xs text-highlight1 uppercase tracking-widest mt-0.5">{progressMsg.nextWaypoint.name}</div>
+        {nextWaypoint && !progressMsg?.allVisited && (
+          <div className="text-xs text-crimson-400 uppercase tracking-widest mt-0.5">{nextWaypoint.name}</div>
         )}
         <div className="text-[11px] text-stone-300 mt-2 max-w-xs text-center">Point the top of your phone forward and follow the arrow</div>
       </div>
+
+      {/* Checkpoint confirmation — shown when within the visit threshold; the
+          checkpoint only counts once the user says they have reached it. */}
+      {showArrivalPrompt && nextWaypoint && (
+        <div className="absolute left-4 right-4 bottom-8 z-30">
+          <div className="max-w-md mx-auto bg-white/85 dark:bg-black/75 backdrop-blur-2xl rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.25)] border border-white/50 dark:border-white/10 p-5">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-crimson-500 dark:text-crimson-400 mb-1">
+              Checkpoint {nextWaypoint.index + 1} · {nextWaypoint.type.replace('_', ' ')}
+            </p>
+            <h3 className="text-lg font-bold text-stone-900 dark:text-white mb-1">
+              Have you reached {nextWaypoint.name}?
+            </h3>
+            <p className="text-sm text-stone-500 dark:text-stone-400 line-clamp-2 mb-4">{nextWaypoint.description}</p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setDismissedWaypointId(nextWaypoint.id)}
+                disabled={confirming}
+                className="flex-1 py-2.5 rounded-full border border-stone-300 dark:border-white/15 text-stone-700 dark:text-stone-300 text-sm font-semibold active:scale-95 transition-transform disabled:opacity-60"
+              >
+                Not yet
+              </button>
+              <button
+                type="button"
+                onClick={confirmArrival}
+                disabled={confirming}
+                className="flex-1 py-2.5 rounded-full bg-gradient-to-r from-crimson-500 to-crimson-700 text-white text-sm font-semibold shadow-lg shadow-crimson-500/30 active:scale-95 transition-transform disabled:opacity-60"
+              >
+                {confirming ? 'Confirming…' : 'I am here'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Video story — milestones and side quests. With the AR camera available
+          the video plays on a plane anchored in world space (see the spawn
+          effect); this layer only carries the source element and the chrome.
+          Without AR it falls back to a fullscreen player. */}
+      {mediaOverlay?.kind === 'video' && (
+        <div className="absolute inset-0 z-40 pointer-events-none">
+          <video
+            key={mediaOverlay.waypoint.id}
+            id={`ar-video-src-${mediaOverlay.waypoint.id}`}
+            ref={videoRef}
+            src={mediaOverlay.waypoint.media}
+            playsInline
+            crossOrigin="anonymous"
+            onEnded={() => setVideoEnded(true)}
+            className={arReady ? 'hidden' : 'absolute inset-0 w-full h-full object-contain bg-black/95'}
+          />
+          {videoNeedsTap && (
+            <button
+              type="button"
+              onClick={() => {
+                videoRef.current?.play().catch(() => {});
+                setVideoNeedsTap(false);
+              }}
+              aria-label="Play video"
+              className="absolute inset-0 flex items-center justify-center pointer-events-auto"
+            >
+              <span className="w-20 h-20 rounded-full bg-crimson-500/90 text-white flex items-center justify-center shadow-lg shadow-crimson-500/40">
+                <svg className="w-9 h-9 ml-1" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </span>
+            </button>
+          )}
+          <div className="absolute bottom-0 left-0 right-0 p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-auto">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-crimson-400 mb-1">
+              {mediaOverlay.waypoint.type.replace('_', ' ')}
+            </p>
+            <h3 className="text-lg font-bold text-white mb-3">{mediaOverlay.waypoint.name}</h3>
+            {!videoEnded ? (
+              <p className="text-sm text-stone-300">
+                {arReady ? 'The story is playing in your world — look around to find it.' : 'Watch the story to continue…'}
+              </p>
+            ) : mediaOverlay.waypoint.type === 'side_quest' ? (
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    sendConfirm(mediaOverlay.waypoint.id);
+                    setMediaOverlay(null);
+                  }}
+                  disabled={confirming}
+                  className="flex-1 py-2.5 rounded-full border border-white/25 text-stone-200 text-sm font-semibold active:scale-95 transition-transform disabled:opacity-60"
+                >
+                  Skip side quest
+                </button>
+                <button
+                  type="button"
+                  onClick={() => startSideQuest(mediaOverlay.waypoint)}
+                  disabled={confirming}
+                  className="flex-1 py-2.5 rounded-full bg-gradient-to-r from-navy-400 to-navy-600 text-white text-sm font-semibold shadow-lg shadow-navy-500/30 active:scale-95 transition-transform disabled:opacity-60"
+                >
+                  Accept side quest
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={replayVideo}
+                  disabled={confirming}
+                  className="flex-1 py-2.5 rounded-full border border-white/25 text-stone-200 text-sm font-semibold active:scale-95 transition-transform disabled:opacity-60"
+                >
+                  Replay
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    sendConfirm(mediaOverlay.waypoint.id);
+                    setMediaOverlay(null);
+                  }}
+                  disabled={confirming}
+                  className="flex-1 py-2.5 rounded-full bg-gradient-to-r from-crimson-500 to-crimson-700 text-white text-sm font-semibold shadow-lg shadow-crimson-500/30 active:scale-95 transition-transform disabled:opacity-60"
+                >
+                  I got the history
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Waypoint image — turn directions etc., revealed after "I am here" */}
+      {mediaOverlay?.kind === 'image' && (
+        <div
+          className="absolute inset-0 z-40 flex items-end justify-center bg-black/50 backdrop-blur-sm"
+          onClick={() => setMediaOverlay(null)}
+        >
+          <div
+            className="w-full max-w-md bg-white/95 dark:bg-[#1E1A14]/95 backdrop-blur-2xl rounded-t-3xl shadow-[0_-8px_40px_rgba(0,0,0,0.3)] border-t border-white/50 dark:border-white/10 px-6 pt-3 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-10 h-1 rounded-full bg-stone-300 dark:bg-white/20 mx-auto mb-4" />
+            <img
+              src={mediaOverlay.waypoint.media}
+              alt={mediaOverlay.waypoint.name}
+              className="w-full max-h-64 object-contain mb-4"
+            />
+            <h3 className="text-lg font-bold text-stone-900 dark:text-white mb-1">{mediaOverlay.waypoint.name}</h3>
+            <p className="text-sm text-stone-500 dark:text-stone-400 mb-4">{mediaOverlay.waypoint.description}</p>
+            <button
+              type="button"
+              onClick={() => setMediaOverlay(null)}
+              className="w-full py-2.5 rounded-full bg-gradient-to-r from-crimson-500 to-crimson-700 text-white text-sm font-semibold active:scale-95 transition-transform"
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Trip complete */}
+      {progressMsg?.allVisited && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center px-6">
+          <div className="w-full max-w-md bg-white/85 dark:bg-black/75 backdrop-blur-2xl rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.25)] border border-white/50 dark:border-white/10 p-6 text-center">
+            <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-crimson-400 to-crimson-600 flex items-center justify-center text-3xl">
+              🏅
+            </div>
+            <h3 className="text-xl font-bold text-stone-900 dark:text-white mb-1">Trip complete!</h3>
+            <p className="text-sm text-stone-500 dark:text-stone-400">
+              You've confirmed every checkpoint of {selectedPlace?.name}. Check your badges on the home page.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
