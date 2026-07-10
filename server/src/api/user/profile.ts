@@ -1,7 +1,10 @@
 import { requireAuth } from 'express-file-cluster/auth';
 import type { Request, Response } from 'express';
 import { User } from '../../model/User.js';
+import { Admin } from '../../model/Admin.js';
 import type { RouteMeta } from 'express-file-cluster';
+
+const modelForRole = (role: string) => (role === 'admin' ? Admin : User);
 
 export const meta: RouteMeta = {
   GET: {
@@ -18,17 +21,17 @@ export const meta: RouteMeta = {
 export const middlewares = [requireAuth('user', 'admin')];
 
 export const GET = async (req: Request, res: Response) => {
-  const { id } = (req as any).user;
-  const user = await User.findById(id);
+  const { id, role } = (req as any).user;
+  const user = await modelForRole(role).findById(id);
   if (!user) return res.status(404).json({ error: 'User not found' });
   const { password: _, ...safe } = user;
   res.json({ user: safe });
 };
 
 export const PUT = async (req: Request, res: Response) => {
-  const { id } = (req as any).user;
+  const { id, role } = (req as any).user;
   const { name, email } = req.body;
-  const updated = await User.update(id, { name, email });
+  const updated = await modelForRole(role).update(id, { name, email });
   if (!updated) return res.status(404).json({ error: 'User not found' });
   const { password: _, ...safe } = updated;
   res.json({ message: 'Profile updated', user: safe });
