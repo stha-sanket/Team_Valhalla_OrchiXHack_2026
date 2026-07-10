@@ -4,6 +4,10 @@ import type { RouteDocument } from '../model/VisitingRoutes.js';
 
 export const VISIT_THRESHOLD_METERS = Number(process.env.VISIT_THRESHOLD_METERS ?? 4);
 
+// A confirmation is accepted within a laxer radius than the arrival prompt,
+// so GPS drift between "prompt shown" and "user taps yes" can't reject it.
+export const CONFIRM_RADIUS_METERS = Math.max(VISIT_THRESHOLD_METERS * 5, 25);
+
 // find()'s type signature doesn't intersect `& { id: string }` the way findById/findOne/create do,
 // even though the runtime always attaches id (see normalise() in the framework's model.ts).
 type WithId<T> = T & { id: string };
@@ -57,7 +61,8 @@ export interface ProximityResult {
   } | null;
   distanceMeters: number | null;
   bearingDegrees: number | null;
-  justVisited: boolean;
+  /** Within the visit threshold of the next waypoint — the client should ask the user to confirm. */
+  arrived: boolean;
   allVisited: boolean;
 }
 
@@ -75,40 +80,18 @@ export async function evaluateProximity(params: {
 
   const progress = await seedUserProgress(userId, visitingPlaceId);
 
-  const findNextUnvisited = () => progress.route_progress.find((p) => !p.visited) ?? null;
-
-  let next = findNextUnvisited();
+  const next = progress.route_progress.find((p) => !p.visited) ?? null;
   if (!next) {
-    return { nextWaypoint: null, distanceMeters: null, bearingDegrees: null, justVisited: false, allVisited: true };
+    return { nextWaypoint: null, distanceMeters: null, bearingDegrees: null, arrived: false, allVisited: true };
   }
 
-  let route = routesById.get(next.route_id);
+  const route = routesById.get(next.route_id);
   if (!route) {
-    return { nextWaypoint: null, distanceMeters: null, bearingDegrees: null, justVisited: false, allVisited: true };
+    return { nextWaypoint: null, distanceMeters: null, bearingDegrees: null, arrived: false, allVisited: true };
   }
 
-  let distance = haversineDistanceMeters(lat, long, parseFloat(route.coordinates.lat), parseFloat(route.coordinates.long));
-  let bearing = bearingDegrees(lat, long, parseFloat(route.coordinates.lat), parseFloat(route.coordinates.long));
-  let justVisited = false;
-
-  if (distance <= VISIT_THRESHOLD_METERS) {
-    justVisited = true;
-    const updatedProgress = progress.route_progress.map((p) =>
-      p.route_id === next!.route_id ? { ...p, visited: true } : p,
-    );
-    await UserProgress.update(progress.id, { route_progress: updatedProgress });
-
-    next = updatedProgress.find((p) => !p.visited) ?? null;
-    if (!next) {
-      return { nextWaypoint: null, distanceMeters: 0, bearingDegrees: null, justVisited: true, allVisited: true };
-    }
-    route = routesById.get(next.route_id);
-    if (!route) {
-      return { nextWaypoint: null, distanceMeters: 0, bearingDegrees: null, justVisited: true, allVisited: true };
-    }
-    distance = haversineDistanceMeters(lat, long, parseFloat(route.coordinates.lat), parseFloat(route.coordinates.long));
-    bearing = bearingDegrees(lat, long, parseFloat(route.coordinates.lat), parseFloat(route.coordinates.long));
-  }
+  const distance = haversineDistanceMeters(lat, long, parseFloat(route.coordinates.lat), parseFloat(route.coordinates.long));
+  const bearing = bearingDegrees(lat, long, parseFloat(route.coordinates.lat), parseFloat(route.coordinates.long));
 
   return {
     nextWaypoint: {
@@ -122,7 +105,49 @@ export async function evaluateProximity(params: {
     },
     distanceMeters: Math.round(distance),
     bearingDegrees: Math.round(bearing),
-    justVisited,
+    // Arrival no longer auto-completes the checkpoint — the user must confirm
+    // via confirmVisit() before it is marked visited.
+    arrived: distance <= VISIT_THRESHOLD_METERS,
     allVisited: false,
   };
+}
+
+export type ConfirmVisitResult =
+  | { confirmed: true; progress: ProximityResult }
+  | { confirmed: false; reason: string; progress: ProximityResult };
+
+export async function confirmVisit(params: {
+  userId: string;
+  visitingPlaceId: string;
+  routeId: string;
+  lat: number;
+  long: number;
+}): Promise<ConfirmVisitResult> {
+  const { userId, visitingPlaceId, routeId, lat, long } = params;
+
+  const evaluate = () => evaluateProximity({ userId, visitingPlaceId, lat, long });
+
+  const progress = await seedUserProgress(userId, visitingPlaceId);
+  const next = progress.route_progress.find((p) => !p.visited) ?? null;
+  if (!next) {
+    return { confirmed: false, reason: 'All checkpoints are already visited.', progress: await evaluate() };
+  }
+  if (next.route_id !== routeId) {
+    return { confirmed: false, reason: 'This is not the current checkpoint.', progress: await evaluate() };
+  }
+
+  const route = await VisitingRoutes.findById(routeId);
+  if (!route) {
+    return { confirmed: false, reason: 'Checkpoint not found.', progress: await evaluate() };
+  }
+
+  const distance = haversineDistanceMeters(lat, long, parseFloat(route.coordinates.lat), parseFloat(route.coordinates.long));
+  if (distance > CONFIRM_RADIUS_METERS) {
+    return { confirmed: false, reason: `You're still ${Math.round(distance)} m away from this checkpoint.`, progress: await evaluate() };
+  }
+
+  const updatedProgress = progress.route_progress.map((p) => (p.route_id === routeId ? { ...p, visited: true } : p));
+  await UserProgress.update(progress.id, { route_progress: updatedProgress });
+
+  return { confirmed: true, progress: await evaluate() };
 }
