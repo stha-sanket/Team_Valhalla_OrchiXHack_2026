@@ -1,5 +1,6 @@
 import VisitingRoutes from '../model/VisitingRoutes.js';
 import { UserProgress } from '../model/UserProgress.js';
+import { User } from '../model/User.js';
 import type { RouteDocument } from '../model/VisitingRoutes.js';
 
 export const VISIT_THRESHOLD_METERS = Number(process.env.VISIT_THRESHOLD_METERS ?? 4);
@@ -148,6 +149,22 @@ export async function confirmVisit(params: {
 
   const updatedProgress = progress.route_progress.map((p) => (p.route_id === routeId ? { ...p, visited: true } : p));
   await UserProgress.update(progress.id, { route_progress: updatedProgress });
+
+  // If the confirmed checkpoint is a milestone, record it on the user's profile.
+  if (route.type === 'milestone') {
+    const user = await User.findById(userId);
+    if (user) {
+      const existingMilestones = user.milestones ?? [];
+      const alreadyEarned = existingMilestones.some((m: any) => m.name === route.name);
+      if (!alreadyEarned) {
+        const updatedMilestones = [
+          ...existingMilestones,
+          { name: route.name, earned_at: new Date().toISOString() },
+        ];
+        await User.update(user.id, { milestones: updatedMilestones });
+      }
+    }
+  }
 
   return { confirmed: true, progress: await evaluate() };
 }

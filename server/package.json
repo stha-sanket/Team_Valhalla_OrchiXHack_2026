@@ -7,7 +7,9 @@
     "build": "efc build prod",
     "start": "efc start prod",
     "test": "efc run tests",
-    "seed:admin": "tsx src/scripts/seedAdmin.ts"
+    "seed:admin": "tsx src/scripts/seedAdmin.ts",
+    "seed:badge": "tsx src/scripts/seedBadge.ts",
+    "seed:orchid": "tsx src/scripts/seedOrchid.ts"
   },
   "dependencies": {
     "bcrypt": "^5.1.0",

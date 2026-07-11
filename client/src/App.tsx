@@ -7,6 +7,8 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
 import ProfilePage from "./pages/ProfilePage";
+import SettingsPage from "./pages/SettingsPage";
+import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 import PathfinderPage from "./pages/PathfinderPage";
 import WaypointLoggerPage from "./pages/admin/WaypointLoggerPage";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -34,6 +36,8 @@ const router = createBrowserRouter([
     children: [
       { path: "/dashboard", element: <DashboardPage /> },
       { path: "/profile", element: <ProfilePage /> },
+      { path: "/settings", element: <SettingsPage /> },
+      { path: "/privacy-policy", element: <PrivacyPolicyPage /> },
       {
         path: "/explore",
         element: (
