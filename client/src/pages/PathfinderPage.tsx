@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGetVisitingPlacesQuery } from '../store/api/visitingPlaceApi';
-import { useStartUserProgressMutation, useGetWsTicketMutation, useGetProgressSummaryQuery } from '../store/api/userProgressApi';
+import { useStartUserProgressMutation, useGetWsTicketMutation, useGetProgressSummaryQuery, useResetUserProgressMutation } from '../store/api/userProgressApi';
+import { useGetPlaceQuizQuery } from '../store/api/arApi';
+import { Gamepad2, MapPin, Medal, Users } from 'lucide-react';
 import { loadScript } from '../lib/loadScript';
 
 const WS_URL = import.meta.env.VITE_WS_URL ?? 'ws://localhost:3000';
@@ -75,11 +77,28 @@ const DEMO_WAYPOINTS: NextWaypoint[] = [
   { id: 'demo-7', name: 'Orchid International College', description: 'You have reached the end of the tour. Congratulations!', type: 'end', media: 'https://res.cloudinary.com/drddkl4on/image/upload/v1783707675/61950144-b202-443d-ae8b-8d6b2c01e482.png', index: 7, coordinates: { lat: '27.702247', long: '85.346473' } },
 ];
 
+// Quiz action on a completed destination card. Label depends on whether the
+// one allowed attempt is already spent; hides itself if the place has no quiz.
+const QuizButton = ({ placeId, onOpen }: { placeId: string; onOpen: () => void }) => {
+  const { data, isError } = useGetPlaceQuizQuery(placeId);
+  if (isError) return null;
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="flex-1 py-2.5 rounded-full bg-gradient-to-r from-crimson-500 to-crimson-700 text-white text-sm font-semibold shadow-lg shadow-crimson-500/30 active:scale-95 transition-transform"
+    >
+      {data?.attempted ? 'View quiz answers' : 'Give quiz'}
+    </button>
+  );
+};
+
 const PathfinderPage = () => {
   const navigate = useNavigate();
   const { data: placesData } = useGetVisitingPlacesQuery();
   const { data: summaryData } = useGetProgressSummaryQuery(undefined, { refetchOnMountOrArgChange: true });
   const [startProgress] = useStartUserProgressMutation();
+  const [resetProgress] = useResetUserProgressMutation();
   const [getTicket] = useGetWsTicketMutation();
 
   const [selectedPlaceId, setSelectedPlaceId] = useState('');
@@ -295,7 +314,7 @@ const PathfinderPage = () => {
         } else if (msg.type === 'visit_result') {
           setConfirming(false);
           if (msg.confirmed) {
-            showToast('Checkpoint reached! 🎉');
+            showToast('Checkpoint reached!');
           } else if (msg.reason) {
             showToast(msg.reason);
           }
@@ -493,12 +512,25 @@ const PathfinderPage = () => {
           if (sideQuestIntervalRef.current) clearInterval(sideQuestIntervalRef.current);
           sideQuestIntervalRef.current = null;
           sendConfirm(wp.id);
-          showToast('Side quest complete! 🎉');
+          showToast('Side quest complete!');
           return null;
         }
         return prev - 1;
       });
     }, 1000);
+  };
+
+  // Revisit a completed place: wipe the route progress (badges, milestones and
+  // AR points are permanent server-side) and start a fresh walk.
+  const revisit = async (placeId: string) => {
+    setGateError(null);
+    try {
+      await resetProgress({ visiting_place_id: placeId }).unwrap();
+    } catch {
+      setGateError('Could not reset your progress for a revisit — try again.');
+      return;
+    }
+    await start(placeId);
   };
 
   const startDemo = async () => {
@@ -596,7 +628,7 @@ const PathfinderPage = () => {
           className="w-full text-left bg-gradient-to-br from-navy-500/10 to-crimson-500/10 dark:from-navy-500/20 dark:to-crimson-500/20 backdrop-blur-2xl rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_40px_rgba(0,0,0,0.4)] border border-crimson-300/30 dark:border-crimson-500/25 p-5 mb-5 active:scale-[0.98] transition-transform"
         >
           <div className="flex items-center gap-3">
-            <span className="text-2xl">🎮</span>
+            <span className="shrink-0 w-10 h-10 rounded-full bg-crimson-500/15 text-crimson-500 dark:text-crimson-400 flex items-center justify-center"><Gamepad2 className="w-5 h-5" /></span>
             <div className="min-w-0 flex-1">
               <h3 className="text-base font-bold text-stone-900 dark:text-white">Demo Mode</h3>
               <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">Walk through the Orchid route — no GPS needed. Tap to simulate each stop.</p>
@@ -616,13 +648,78 @@ const PathfinderPage = () => {
             {places.map((p) => {
               const trip = tripByPlaceId.get(p.id);
               const percent = trip && trip.total_points > 0 ? Math.round((trip.visited_points / trip.total_points) * 100) : null;
+              const completed = !!trip && trip.total_points > 0 && trip.visited_points === trip.total_points;
+
+              const progressBlock = trip && percent != null && (
+                <div className="mt-4">
+                  <div className="relative h-2 rounded-full bg-stone-200 dark:bg-white/10">
+                    <div
+                      className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-crimson-500 to-crimson-700"
+                      style={{ width: `${percent}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between mt-1.5">
+                    <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                      {trip.visited_points} of {trip.total_points} stops · {percent === 100 ? 'completed' : percent === 0 ? 'not started' : 'continue trip'}
+                    </p>
+                    {trip.badge_earned && (
+                      <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-navy-50 dark:bg-navy-500/25 text-navy-500 dark:text-navy-200">
+                        Badge earned
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+
+              const cardClass =
+                'w-full text-left bg-white/70 dark:bg-black/60 backdrop-blur-2xl rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_40px_rgba(0,0,0,0.4)] border border-white/50 dark:border-white/10 p-5';
+
+              const visitorCount = p.visitor_count ?? 0;
+              const visitedBy = (
+                <p className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400 mt-2">
+                  <Users className="w-3.5 h-3.5" />
+                  {visitorCount === 0
+                    ? 'Be the first to visit'
+                    : `Visited by ${visitorCount} explorer${visitorCount === 1 ? '' : 's'}`}
+                </p>
+              );
+
+              // Completed places aren't a tap-to-start card anymore — they offer
+              // a fresh walk (Revisit) or the unlocked quiz.
+              if (completed) {
+                return (
+                  <div key={p.id} className={cardClass}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-base font-bold text-stone-900 dark:text-white truncate">{p.name}</h3>
+                        <p className="text-sm text-stone-500 dark:text-stone-400 line-clamp-2 mt-0.5">{p.description}</p>
+                      </div>
+                      <div className="shrink-0 w-9 h-9 rounded-full bg-navy-50 dark:bg-navy-500/25 text-navy-500 dark:text-navy-200 flex items-center justify-center">
+                        <Medal className="w-4.5 h-4.5" />
+                      </div>
+                    </div>
+                    {visitedBy}
+                    {progressBlock}
+                    <div className="flex gap-3 mt-4">
+                      <button
+                        type="button"
+                        onClick={() => revisit(p.id)}
+                        className="flex-1 py-2.5 rounded-full border border-stone-300 dark:border-white/15 text-stone-700 dark:text-stone-300 text-sm font-semibold active:scale-95 transition-transform"
+                      >
+                        Revisit
+                      </button>
+                      <QuizButton placeId={p.id} onOpen={() => navigate(`/quiz/${p.id}`)} />
+                    </div>
+                  </div>
+                );
+              }
 
               return (
                 <button
                   key={p.id}
                   type="button"
                   onClick={() => start(p.id)}
-                  className="w-full text-left bg-white/70 dark:bg-black/60 backdrop-blur-2xl rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_40px_rgba(0,0,0,0.4)] border border-white/50 dark:border-white/10 p-5 active:scale-[0.98] transition-transform"
+                  className={`${cardClass} active:scale-[0.98] transition-transform`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
@@ -635,27 +732,8 @@ const PathfinderPage = () => {
                       </svg>
                     </div>
                   </div>
-
-                  {trip && percent != null && (
-                    <div className="mt-4">
-                      <div className="relative h-2 rounded-full bg-stone-200 dark:bg-white/10">
-                        <div
-                          className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-crimson-500 to-crimson-700"
-                          style={{ width: `${percent}%` }}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between mt-1.5">
-                        <p className="text-[11px] text-stone-500 dark:text-stone-400">
-                          {trip.visited_points} of {trip.total_points} stops · {percent === 100 ? 'completed' : percent === 0 ? 'not started' : 'continue trip'}
-                        </p>
-                        {trip.badge_earned && (
-                          <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-navy-50 dark:bg-navy-500/25 text-navy-500 dark:text-navy-200">
-                            Badge earned
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                  {visitedBy}
+                  {progressBlock}
                 </button>
               );
             })}
@@ -710,7 +788,7 @@ const PathfinderPage = () => {
             onClick={simulateArrival}
             className="px-5 py-2.5 rounded-full bg-gradient-to-r from-navy-500 to-crimson-600 text-white text-sm font-bold shadow-lg shadow-crimson-500/30 active:scale-95 transition-transform flex items-center gap-2"
           >
-            <span>📍</span> Simulate Arrival at <span className="italic">{DEMO_WAYPOINTS[demoIdx]?.name ?? 'next stop'}</span>
+            <MapPin className="w-4 h-4" /> Simulate Arrival at <span className="italic">{DEMO_WAYPOINTS[demoIdx]?.name ?? 'next stop'}</span>
           </button>
         </div>
       )}
@@ -926,8 +1004,8 @@ const PathfinderPage = () => {
       {progressMsg?.allVisited && (
         <div className="absolute inset-0 z-30 flex items-center justify-center px-6">
           <div className="w-full max-w-md bg-white/85 dark:bg-black/75 backdrop-blur-2xl rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.25)] border border-white/50 dark:border-white/10 p-6 text-center">
-            <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-crimson-400 to-crimson-600 flex items-center justify-center text-3xl">
-              🏅
+            <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-crimson-400 to-crimson-600 text-white flex items-center justify-center">
+              <Medal className="w-8 h-8" />
             </div>
             <h3 className="text-xl font-bold text-stone-900 dark:text-white mb-1">Trip complete!</h3>
             <p className="text-sm text-stone-500 dark:text-stone-400">

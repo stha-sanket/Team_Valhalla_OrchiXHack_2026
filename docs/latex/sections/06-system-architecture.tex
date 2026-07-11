@@ -1,0 +1,23 @@
+\chapter{System Architecture}
+\label{ch:system-architecture}
+% Port from: docs/04_system_architecture.md
+
+\section{High-Level Architecture}
+\todo{Diagram + narrative: React client, Express File Cluster server,
+MongoDB, WebSocket pathfinder channel.}
+% \begin{figure}[h]\centering
+%   \includegraphics[width=\textwidth]{architecture}
+%   \caption{System architecture}\label{fig:architecture}
+% \end{figure}
+
+\section{Client}
+\todo{SPA structure, routing, role-based experience (user vs admin), RTK Query.}
+
+\section{Server}
+\todo{File-based routing, auth strategy, WebSocket proximity engine.}
+
+\section{Real-Time Location Pipeline}
+\todo{GPS watch $\rightarrow$ WS location frames $\rightarrow$ haversine
+proximity $\rightarrow$ arrival confirmation $\rightarrow$ dynamic geofence
+threshold served from the place record.}
+

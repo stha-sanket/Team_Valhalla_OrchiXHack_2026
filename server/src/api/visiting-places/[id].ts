@@ -19,7 +19,7 @@ export const meta: RouteMeta = {
   },
   PUT: {
     description: 'Update a visiting place by ID (admin only).',
-    request: { params: { id: '64f0...' }, body: { name: 'Krishna Mandir', description: 'Updated', lat: '27.7110', long: '85.3243' } },
+    request: { params: { id: '64f0...' }, body: { name: 'Krishna Mandir', description: 'Updated', lat: '27.7110', long: '85.3243', visit_threshold_meters: 10 } },
     response: { status: 200, body: { message: 'Place updated', place: {} } },
   },
   DELETE: {
@@ -38,8 +38,11 @@ export const GET = async (req: Request, res: Response) => {
 };
 
 export const PUT = async (req: Request, res: Response) => {
-  const { name, description, lat, long, badge } = req.body;
-  const updated = await VisitingPlace.update(req.params.id, { name, description, lat, long, badge });
+  const { name, description, lat, long, badge, visit_threshold_meters } = req.body;
+  if (visit_threshold_meters !== undefined && (typeof visit_threshold_meters !== 'number' || visit_threshold_meters <= 0)) {
+    return res.status(400).json({ error: 'visit_threshold_meters must be a positive number' });
+  }
+  const updated = await VisitingPlace.update(req.params.id, { name, description, lat, long, badge, visit_threshold_meters });
   if (!updated) return res.status(404).json({ error: 'Place not found' });
   res.json({ message: 'Place updated', place: updated });
 };

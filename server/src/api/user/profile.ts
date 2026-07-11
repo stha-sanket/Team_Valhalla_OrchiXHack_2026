@@ -12,8 +12,8 @@ export const meta: RouteMeta = {
     response: { status: 200, body: { user: { id: '1', role: 'user', email: 'user@example.com' } } },
   },
   PUT: {
-    description: "Update the authenticated user's profile.",
-    request: { body: { name: 'Jane Doe', email: 'jane@example.com' } },
+    description: "Update the authenticated user's profile, including the avatar image URL (pass avatar: null to remove it).",
+    request: { body: { name: 'Jane Doe', email: 'jane@example.com', avatar: 'https://raw.githubusercontent.com/Ashwinvalento/cartoon-avatar/master/lib/images/female/12.png' } },
     response: { status: 200, body: { message: 'Profile updated', user: { id: '1', role: 'user', email: 'jane@example.com' } } },
   },
 };
@@ -30,8 +30,12 @@ export const GET = async (req: Request, res: Response) => {
 
 export const PUT = async (req: Request, res: Response) => {
   const { id, role } = (req as any).user;
-  const { name, email } = req.body;
-  const updated = await modelForRole(role).update(id, { name, email });
+  const { name, email, avatar } = req.body;
+  if (avatar !== undefined && avatar !== null && typeof avatar !== 'string') {
+    return res.status(400).json({ error: 'avatar must be a URL string or null' });
+  }
+  // null clears the avatar; undefined leaves it untouched.
+  const updated = await modelForRole(role).update(id, { name, email, avatar: avatar === null ? '' : avatar });
   if (!updated) return res.status(404).json({ error: 'User not found' });
   const { password: _, ...safe } = updated;
   res.json({ message: 'Profile updated', user: safe });

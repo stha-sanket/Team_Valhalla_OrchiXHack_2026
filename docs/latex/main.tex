@@ -1,0 +1,173 @@
+% =====================================================================
+%  ARadhana — Project Documentation Template
+%  Build:  pdflatex main && bibtex main && pdflatex main && pdflatex main
+%  Structure mirrors docs/*.md so content can be ported section by section.
+%  Every section file contains TODO markers — nothing is prefilled.
+% =====================================================================
+\documentclass[12pt,a4paper]{report}
+
+% ---------- Layout ----------
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+\usepackage{parskip}
+
+% ---------- Fonts & language ----------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[english]{babel}
+
+% ---------- Brand colors (match the app's Tailwind palette) ----------
+\usepackage{xcolor}
+\definecolor{orchidcrimson}{HTML}{DC143C}
+\definecolor{orchidnavy}{HTML}{003893}
+\definecolor{codegray}{HTML}{F5F4F0}
+\definecolor{inkmuted}{HTML}{6B6558}
+
+% ---------- Headings ----------
+\usepackage{titlesec}
+\titleformat{\chapter}[display]
+  {\normalfont\huge\bfseries\color{orchidnavy}}
+  {\color{inkmuted}\large Chapter \thechapter}{12pt}{\Huge}
+\titlespacing*{\chapter}{0pt}{0pt}{28pt}
+\titleformat*{\section}{\Large\bfseries\color{orchidnavy}}
+\titleformat*{\subsection}{\large\bfseries}
+
+% ---------- Header / footer ----------
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\color{inkmuted}ARadhana}
+\fancyhead[R]{\small\color{inkmuted}\leftmark}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+
+% ---------- Figures, tables, lists ----------
+\usepackage{graphicx}
+\graphicspath{{figures/}}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{enumitem}
+\setlist{nosep}
+\usepackage{caption}
+\captionsetup{font=small,labelfont={bf,color=orchidnavy}}
+
+% ---------- Code listings ----------
+\usepackage{listings}
+\lstdefinestyle{orchidcode}{
+  backgroundcolor=\color{codegray},
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{orchidnavy}\bfseries,
+  stringstyle=\color{orchidcrimson},
+  commentstyle=\color{inkmuted}\itshape,
+  numbers=left,
+  numberstyle=\tiny\color{inkmuted},
+  frame=single,
+  rulecolor=\color{inkmuted!40},
+  breaklines=true,
+  showstringspaces=false,
+  tabsize=2,
+  captionpos=b,
+}
+\lstset{style=orchidcode}
+% JSON has no built-in lexer — minimal definition for schema/API examples.
+\lstdefinelanguage{json}{
+  morestring=[b]",
+  morekeywords={true,false,null},
+  sensitive=true,
+}
+
+% ---------- Links (load last) ----------
+\usepackage[hidelinks]{hyperref}
+\hypersetup{
+  pdftitle={ARadhana — Project Documentation},
+  pdfauthor={TODO: team name},
+  colorlinks=true,
+  linkcolor=orchidnavy,
+  urlcolor=orchidcrimson,
+  citecolor=orchidnavy,
+}
+
+% ---------- Convenience macros ----------
+\newcommand{\projectname}{ARadhana}
+\newcommand{\todo}[1]{\textcolor{orchidcrimson}{\textbf{[TODO: #1]}}}
+\newcommand{\code}[1]{\texttt{#1}}
+% Usage: \apiroute{GET}{/api/visiting-places}
+\newcommand{\apiroute}[2]{\code{\textcolor{orchidnavy}{\textbf{#1}} #2}}
+
+% =====================================================================
+\begin{document}
+
+% ---------------- Title page ----------------
+\begin{titlepage}
+  \centering
+  \vspace*{1.5cm}
+  % \includegraphics[width=0.35\textwidth]{logo}\\[1cm]   % TODO: drop logo into figures/
+  {\color{orchidcrimson}\rule{\textwidth}{2pt}}\\[1.2cm]
+  {\Huge\bfseries\color{orchidnavy}\projectname}\\[0.4cm]
+  {\Large AR-Guided Heritage \& Campus Exploration}\\[0.2cm]
+  {\large\color{inkmuted}\todo{one-line tagline}}\\[1.2cm]
+  {\color{orchidcrimson}\rule{\textwidth}{2pt}}\\[2cm]
+
+  {\large\textbf{Project Documentation}}\\[2cm]
+
+  \begin{tabular}{r l}
+    \textbf{Team}       & \todo{team name}            \\[6pt]
+    \textbf{Members}    & \todo{member 1}             \\
+                        & \todo{member 2}             \\
+                        & \todo{member 3}             \\[6pt]
+    \textbf{Event}      & \todo{hackathon / course}   \\[6pt]
+    \textbf{Institution}& \todo{institution}          \\[6pt]
+    \textbf{Date}       & \today                      \\
+  \end{tabular}
+
+  \vfill
+  {\small\color{inkmuted}\todo{footer note, e.g. supervisor / mentor}}
+\end{titlepage}
+
+% ---------------- Front matter ----------------
+\pagenumbering{roman}
+
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+\todo{150--250 word summary: what \projectname{} is, the problem it solves,
+the approach (AR pathfinding + gamification), and the headline outcome.}
+
+\vspace{1em}
+\noindent\textbf{Keywords:} \todo{augmented reality, geofencing, gamification, \ldots}
+
+\tableofcontents
+\listoffigures
+\listoftables
+\clearpage
+
+% ---------------- Main matter ----------------
+\pagenumbering{arabic}
+
+\input{sections/01-introduction}
+\input{sections/02-problem-statement}
+\input{sections/03-objectives}
+\input{sections/04-market-analysis}
+\input{sections/05-design-thinking}
+\input{sections/06-system-architecture}
+\input{sections/07-database-schemas}
+\input{sections/08-gamification-engine}
+\input{sections/09-ar-pathfinder}
+\input{sections/10-tech-stack}
+\input{sections/11-results}
+\input{sections/12-limitations-future-work}
+\input{sections/13-conclusion}
+
+% ---------------- References ----------------
+\nocite{*} % template: list all .bib entries even before anything is cited
+\bibliographystyle{ieeetr}
+\bibliography{references}
+\addcontentsline{toc}{chapter}{References}
+
+% ---------------- Appendices ----------------
+\appendix
+\input{sections/appendix-a-api-reference}
+\input{sections/appendix-b-folder-structure}
+
+\end{document}

@@ -1,13 +1,21 @@
 import VisitingRoutes from '../model/VisitingRoutes.js';
 import { UserProgress } from '../model/UserProgress.js';
 import { User } from '../model/User.js';
+import { VisitingPlace } from '../model/VisitingPlace.js';
 import type { RouteDocument } from '../model/VisitingRoutes.js';
+import { awardPoints, MILESTONE_POINTS, SIDE_QUEST_POINTS, PLACE_COMPLETE_POINTS } from './arPoints.js';
 
-export const VISIT_THRESHOLD_METERS = Number(process.env.VISIT_THRESHOLD_METERS ?? 4);
+export const DEFAULT_VISIT_THRESHOLD_METERS = 10;
 
-// A confirmation is accepted within a laxer radius than the arrival prompt,
-// so GPS drift between "prompt shown" and "user taps yes" can't reject it.
-export const CONFIRM_RADIUS_METERS = Math.max(VISIT_THRESHOLD_METERS * 5, 25);
+// The geofence radius comes from the visiting place record so each place can
+// tune it. Confirmation enforces the same radius as the arrival prompt: a
+// confirmed visit is proof the user was physically within the threshold of the
+// registered coordinates, so no laxer drift allowance is applied.
+export async function getVisitThresholdMeters(visitingPlaceId: string): Promise<number> {
+  const place = await VisitingPlace.findById(visitingPlaceId);
+  const threshold = place?.visit_threshold_meters;
+  return typeof threshold === 'number' && threshold > 0 ? threshold : DEFAULT_VISIT_THRESHOLD_METERS;
+}
 
 // find()'s type signature doesn't intersect `& { id: string }` the way findById/findOne/create do,
 // even though the runtime always attaches id (see normalise() in the framework's model.ts).
@@ -62,6 +70,8 @@ export interface ProximityResult {
   } | null;
   distanceMeters: number | null;
   bearingDegrees: number | null;
+  /** Geofence radius (meters) for this visiting place, served from its record. */
+  thresholdMeters: number;
   /** Within the visit threshold of the next waypoint — the client should ask the user to confirm. */
   arrived: boolean;
   allVisited: boolean;
@@ -75,6 +85,7 @@ export async function evaluateProximity(params: {
 }): Promise<ProximityResult> {
   const { userId, visitingPlaceId, lat, long } = params;
 
+  const thresholdMeters = await getVisitThresholdMeters(visitingPlaceId);
   const routes = (await VisitingRoutes.find({ visiting_place_id: visitingPlaceId })) as WithId<RouteDocument>[];
   routes.sort((a, b) => a.index - b.index);
   const routesById = new Map(routes.map((r) => [r.id, r]));
@@ -83,12 +94,12 @@ export async function evaluateProximity(params: {
 
   const next = progress.route_progress.find((p) => !p.visited) ?? null;
   if (!next) {
-    return { nextWaypoint: null, distanceMeters: null, bearingDegrees: null, arrived: false, allVisited: true };
+    return { nextWaypoint: null, distanceMeters: null, bearingDegrees: null, thresholdMeters, arrived: false, allVisited: true };
   }
 
   const route = routesById.get(next.route_id);
   if (!route) {
-    return { nextWaypoint: null, distanceMeters: null, bearingDegrees: null, arrived: false, allVisited: true };
+    return { nextWaypoint: null, distanceMeters: null, bearingDegrees: null, thresholdMeters, arrived: false, allVisited: true };
   }
 
   const distance = haversineDistanceMeters(lat, long, parseFloat(route.coordinates.lat), parseFloat(route.coordinates.long));
@@ -106,9 +117,10 @@ export async function evaluateProximity(params: {
     },
     distanceMeters: Math.round(distance),
     bearingDegrees: Math.round(bearing),
+    thresholdMeters,
     // Arrival no longer auto-completes the checkpoint — the user must confirm
     // via confirmVisit() before it is marked visited.
-    arrived: distance <= VISIT_THRESHOLD_METERS,
+    arrived: distance <= thresholdMeters,
     allVisited: false,
   };
 }
@@ -142,13 +154,38 @@ export async function confirmVisit(params: {
     return { confirmed: false, reason: 'Checkpoint not found.', progress: await evaluate() };
   }
 
+  const thresholdMeters = await getVisitThresholdMeters(visitingPlaceId);
   const distance = haversineDistanceMeters(lat, long, parseFloat(route.coordinates.lat), parseFloat(route.coordinates.long));
-  if (distance > CONFIRM_RADIUS_METERS) {
+  if (distance > thresholdMeters) {
     return { confirmed: false, reason: `You're still ${Math.round(distance)} m away from this checkpoint.`, progress: await evaluate() };
   }
 
   const updatedProgress = progress.route_progress.map((p) => (p.route_id === routeId ? { ...p, visited: true } : p));
   await UserProgress.update(progress.id, { route_progress: updatedProgress });
+
+  // Completing every checkpoint of a place pays out once per place, ever.
+  if (updatedProgress.length > 0 && updatedProgress.every((p) => p.visited)) {
+    const place = await VisitingPlace.findById(visitingPlaceId);
+    const awarded = await awardPoints(userId, {
+      source: 'place_complete',
+      ref_id: visitingPlaceId,
+      label: `Completed ${place?.name ?? 'a place'}`,
+      points: PLACE_COMPLETE_POINTS,
+    });
+    // The award only pays on the FIRST completion ever, so it doubles as the
+    // "new unique visitor" signal — an O(1) counter bump, never a user scan.
+    if (awarded !== null && place) {
+      await VisitingPlace.update(visitingPlaceId, { visitor_count: (place.visitor_count ?? 0) + 1 });
+    }
+  }
+
+  // AR points: milestones and side quests pay out once per checkpoint, ever —
+  // awardPoints is idempotent on (source, ref_id) so re-confirms can't farm points.
+  if (route.type === 'milestone') {
+    await awardPoints(userId, { source: 'milestone', ref_id: routeId, label: route.name, points: MILESTONE_POINTS });
+  } else if (route.type === 'side_quest') {
+    await awardPoints(userId, { source: 'side_quest', ref_id: routeId, label: route.name, points: SIDE_QUEST_POINTS });
+  }
 
   // If the confirmed checkpoint is a milestone, record it on the user's profile.
   if (route.type === 'milestone') {

@@ -9,7 +9,8 @@
     "test": "efc run tests",
     "seed:admin": "tsx src/scripts/seedAdmin.ts",
     "seed:badge": "tsx src/scripts/seedBadge.ts",
-    "seed:orchid": "tsx src/scripts/seedOrchid.ts"
+    "seed:orchid": "tsx src/scripts/seedOrchid.ts",
+    "seed:quiz": "tsx src/scripts/seedQuiz.ts"
   },
   "dependencies": {
     "bcrypt": "^5.1.0",

@@ -30,6 +30,24 @@ export const LogoutIcon = () => (
   </svg>
 );
 
+export const UsersIcon = () => (
+  <svg {...iconProps}>
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6-4a3 3 0 11-3-3M6 9a3 3 0 103 3" />
+  </svg>
+);
+
+export const ChartIcon = () => (
+  <svg {...iconProps}>
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 20V10m6 10V4m6 16v-7m4 7H2" />
+  </svg>
+);
+
+export const GiftIcon = () => (
+  <svg {...iconProps}>
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12v9H4v-9m16-4H4v4h16V8zm-8 13V8m0 0H8.5a2.25 2.25 0 110-4.5C11 3.5 12 8 12 8zm0 0h3.5a2.25 2.25 0 100-4.5C13 3.5 12 8 12 8z" />
+  </svg>
+);
+
 export const MapPinIcon = () => (
   <svg {...iconProps}>
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z" />

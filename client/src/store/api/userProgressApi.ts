@@ -49,15 +49,21 @@ export interface ProgressSummaryResponse {
 export const userProgressApi = createApi({
   reducerPath: "userProgressApi",
   baseQuery: baseQueryWithReauth,
+  tagTypes: ["Summary"],
   endpoints: (builder) => ({
     getUserProgress: builder.query<{ progress: UserProgress | null }, { visitingPlaceId: string }>({
       query: ({ visitingPlaceId }) => `/user-progress?visiting_place_id=${visitingPlaceId}`,
     }),
     getProgressSummary: builder.query<ProgressSummaryResponse, void>({
       query: () => "/user-progress/summary",
+      providesTags: ["Summary"],
     }),
     startUserProgress: builder.mutation<{ progress: UserProgress }, { visiting_place_id: string }>({
       query: (body) => ({ url: "/user-progress", method: "POST", body }),
+    }),
+    resetUserProgress: builder.mutation<{ message: string; progress: UserProgress }, { visiting_place_id: string }>({
+      query: (body) => ({ url: "/user-progress/reset", method: "POST", body }),
+      invalidatesTags: ["Summary"],
     }),
     // Ticket must never be cached — a fresh one is needed on every WS (re)connect.
     // Modeled as a mutation even though the server route is a GET, purely to opt out of RTK Query's cache.
@@ -71,5 +77,6 @@ export const {
   useGetUserProgressQuery,
   useGetProgressSummaryQuery,
   useStartUserProgressMutation,
+  useResetUserProgressMutation,
   useGetWsTicketMutation,
 } = userProgressApi;

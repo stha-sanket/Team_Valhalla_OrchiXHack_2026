@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useGetMeQuery, useLogoutMutation } from '../store/api/authApi';
 import Dock from './Dock';
-import { HomeIcon, CompassIcon, UserIcon, LogoutIcon, MapPinIcon } from './icons';
+import { HomeIcon, CompassIcon, UserIcon, UsersIcon, ChartIcon, GiftIcon, LogoutIcon, MapPinIcon } from './icons';
 
 const AppLayout = () => {
   const { data } = useGetMeQuery();
@@ -18,9 +18,19 @@ const AppLayout = () => {
   };
 
   const isAdmin = data?.user.role === 'admin';
-  const roleItem = isAdmin
-    ? { icon: <MapPinIcon />, label: 'Waypoint Logger', path: '/admin/waypoint-logger' }
-    : { icon: <CompassIcon />, label: 'Explore', path: '/explore' };
+  const navItems = isAdmin
+    ? [
+        { icon: <ChartIcon />, label: 'Dashboard', path: '/admin' },
+        { icon: <UsersIcon />, label: 'Users', path: '/admin/users' },
+        { icon: <MapPinIcon />, label: 'Waypoints', path: '/admin/waypoint-logger' },
+      ]
+    : [
+        { icon: <HomeIcon />, label: 'Home', path: '/dashboard' },
+        { icon: <CompassIcon />, label: 'Explore', path: '/explore' },
+        { icon: <UsersIcon />, label: 'People', path: '/people' },
+        { icon: <GiftIcon />, label: 'Redeem', path: '/redeem' },
+        { icon: <UserIcon />, label: 'Profile', path: '/profile' },
+      ];
 
   const isExplore = location.pathname === '/explore';
   // The pathfinder switches to ?ar=1 while the AR camera view is active — it
@@ -32,10 +42,17 @@ const AppLayout = () => {
       <Outlet />
       {!inAR && <Dock
         items={[
-          { icon: <HomeIcon />, label: 'Home', active: location.pathname === '/dashboard', onClick: () => navigate('/dashboard') },
-          { icon: roleItem.icon, label: roleItem.label, active: location.pathname === roleItem.path, onClick: () => navigate(roleItem.path) },
-          { icon: <UserIcon />, label: 'Profile', active: location.pathname === '/profile', onClick: () => navigate('/profile') },
-          { icon: <LogoutIcon />, label: 'Sign out', onClick: () => setShowSignOutConfirm(true), disabled: isLoading },
+          ...navItems.map((item) => ({
+            icon: item.icon,
+            label: item.label,
+            active: location.pathname === item.path,
+            onClick: () => navigate(item.path),
+          })),
+          // Users sign out from their Profile page instead — their dock slot
+          // is the AR-points Redeem section.
+          ...(isAdmin
+            ? [{ icon: <LogoutIcon />, label: 'Sign out', onClick: () => setShowSignOutConfirm(true), disabled: isLoading }]
+            : []),
         ]}
       />}
 

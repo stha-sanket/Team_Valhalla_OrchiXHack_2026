@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { X } from 'lucide-react';
 import { useCreateVisitingPlaceMutation } from '../../store/api/visitingPlaceApi';
 import { useBulkCreateVisitingRoutesMutation } from '../../store/api/visitingRoutesApi';
 import type { RouteWaypointType } from '../../store/api/visitingRoutesApi';
@@ -269,7 +270,7 @@ const WaypointLoggerPage = () => {
                       <div className="flex gap-1 flex-shrink-0">
                         <button type="button" onClick={() => moveWaypoint(i, -1)} className="w-7 h-7 rounded-md bg-stone-100 dark:bg-white/10 text-stone-600 dark:text-stone-300 text-xs">↑</button>
                         <button type="button" onClick={() => moveWaypoint(i, 1)} className="w-7 h-7 rounded-md bg-stone-100 dark:bg-white/10 text-stone-600 dark:text-stone-300 text-xs">↓</button>
-                        <button type="button" onClick={() => removeWaypoint(i)} className="w-7 h-7 rounded-md bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-xs">✕</button>
+                        <button type="button" onClick={() => removeWaypoint(i)} className="w-7 h-7 rounded-md bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-xs"><X className="w-4 h-4" /></button>
                       </div>
                     </li>
                   ))}

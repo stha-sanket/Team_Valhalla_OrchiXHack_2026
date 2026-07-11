@@ -8,6 +8,8 @@ export interface VisitingPlace {
   lat: string;
   long: string;
   badge?: string;
+  /** Unique users who completed this place — denormalized counter, not computed per request. */
+  visitor_count?: number;
 }
 
 interface CreateVisitingPlaceRequest {

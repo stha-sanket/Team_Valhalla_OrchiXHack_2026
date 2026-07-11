@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGetMeQuery } from '../store/api/authApi';
 import { useGetProgressSummaryQuery } from '../store/api/userProgressApi';
+import { useGetMyPointsQuery } from '../store/api/arApi';
+import { Lock } from 'lucide-react';
 import type { TripSummary } from '../store/api/userProgressApi';
 
 const greeting = () => {
@@ -88,10 +90,14 @@ const DashboardPage = () => {
   const navigate = useNavigate();
   const { data: me } = useGetMeQuery();
   const { data: summary, isLoading } = useGetProgressSummaryQuery();
+  const { data: points } = useGetMyPointsQuery();
   const [selectedBadge, setSelectedBadge] = useState<TripSummary | null>(null);
 
   const trips = summary?.trips ?? [];
-  const recentTrip = trips[0];
+  // Completed trips live on the Explore page (revisit / quiz); the dashboard
+  // spotlights the newest trip that still has stops left.
+  const recentTrip = trips.find((t) => t.total_points === 0 || t.visited_points < t.total_points);
+  const allTripsCompleted = !recentTrip && trips.length > 0;
   const milestones = trips.flatMap((t) => t.milestones.map((m) => ({ ...m, placeName: t.place.name })));
   const achievedCount = milestones.filter((m) => m.visited).length;
   const earnedBadges = trips.filter((t) => t.badge_earned);
@@ -108,9 +114,14 @@ const DashboardPage = () => {
             {displayName.charAt(0).toUpperCase()}
           </div>
         )}
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="text-sm text-stone-500 dark:text-stone-400">{greeting()},</p>
           <h1 className="text-2xl font-bold text-stone-900 dark:text-white truncate">{displayName}</h1>
+        </div>
+        {/* AR points are private — only the owner ever sees this. */}
+        <div className="shrink-0 text-center px-3 py-1.5 rounded-2xl bg-gradient-to-br from-crimson-500 to-crimson-700 text-white shadow-lg shadow-crimson-500/30">
+          <p className="text-lg font-bold leading-tight tabular-nums">{points?.total ?? 0}</p>
+          <p className="text-[9px] font-semibold uppercase tracking-wide opacity-90">AR points</p>
         </div>
       </header>
 
@@ -137,15 +148,31 @@ const DashboardPage = () => {
                 </div>
                 <p className="text-sm text-stone-500 dark:text-stone-400 line-clamp-2 mb-4">{recentTrip.place.description}</p>
                 <TripProgressBar trip={recentTrip} />
+                {recentTrip.total_points > 0 && recentTrip.visited_points === recentTrip.total_points ? (
+                  <button
+                    onClick={() => navigate(`/quiz/${recentTrip.place.id}`)}
+                    className="w-full mt-4 py-2.5 rounded-full border border-crimson-500/40 text-crimson-600 dark:text-crimson-400 text-sm font-semibold active:scale-95 transition-transform"
+                  >
+                    Take the quiz · earn AR points
+                  </button>
+                ) : (
+                  <p className="mt-4 flex items-center justify-center gap-1.5 text-xs text-stone-400 dark:text-stone-500">
+                    <Lock className="w-3.5 h-3.5" /> Finish the trip to unlock the quiz
+                  </p>
+                )}
               </Card>
             ) : (
               <Card className="p-6 text-center">
-                <p className="text-sm text-stone-500 dark:text-stone-400 mb-4">No trips yet — your next adventure awaits.</p>
+                <p className="text-sm text-stone-500 dark:text-stone-400 mb-4">
+                  {allTripsCompleted
+                    ? 'All trips completed — revisit a place or take its quiz from Explore!'
+                    : 'No trips yet — your next adventure awaits.'}
+                </p>
                 <button
                   onClick={() => navigate('/explore')}
                   className="px-5 py-2.5 rounded-full bg-gradient-to-r from-crimson-500 to-crimson-700 text-white text-sm font-semibold active:scale-95 transition-transform"
                 >
-                  Start exploring
+                  {allTripsCompleted ? 'Go to Explore' : 'Start exploring'}
                 </button>
               </Card>
             )}

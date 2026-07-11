@@ -4,6 +4,8 @@ import { visitingPlaceApi } from './api/visitingPlaceApi';
 import { visitingRoutesApi } from './api/visitingRoutesApi';
 import { userProgressApi } from './api/userProgressApi';
 import { userApi } from './api/userApi';
+import { adminApi } from './api/adminApi';
+import { arApi } from './api/arApi';
 
 export const store = configureStore({
   reducer: {
@@ -12,6 +14,8 @@ export const store = configureStore({
     [visitingRoutesApi.reducerPath]: visitingRoutesApi.reducer,
     [userProgressApi.reducerPath]: userProgressApi.reducer,
     [userApi.reducerPath]: userApi.reducer,
+    [adminApi.reducerPath]: adminApi.reducer,
+    [arApi.reducerPath]: arApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
@@ -20,6 +24,8 @@ export const store = configureStore({
       visitingRoutesApi.middleware,
       userProgressApi.middleware,
       userApi.middleware,
+      adminApi.middleware,
+      arApi.middleware,
     ),
 });
 

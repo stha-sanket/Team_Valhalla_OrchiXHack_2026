@@ -20,6 +20,7 @@ const PLACE = {
   lat: '27.702247',
   long: '85.346473',
   badge: 'https://www.oic.edu.np/wp-content/uploads/2020/05/logo.png',
+  visit_threshold_meters: 10,
 };
 
 const POINTS = [
