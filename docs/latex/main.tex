@@ -47,8 +47,8 @@
 \usepackage{titlesec}
 \usepackage{etoolbox}
 \makeatletter
-\patchcmd{\chapter}{\clearpage}{}{}{}
-\patchcmd{\chapter}{\cleardoublepage}{}{}{}
+\patchcmd{\chapter}{\clearpage}{\par\vspace{4ex}}{}{}
+\patchcmd{\chapter}{\cleardoublepage}{\par\vspace{4ex}}{}{}
 \makeatother
 % Headings in Biolinum (sans), like acmart's section heads.
 \titleformat{\chapter}[display]
@@ -69,6 +69,7 @@
 
 % ---------- Figures, tables, lists ----------
 \usepackage{graphicx}
+\usepackage{float}
 \graphicspath{{figures/}}
 \usepackage{booktabs}
 \usepackage{longtable}

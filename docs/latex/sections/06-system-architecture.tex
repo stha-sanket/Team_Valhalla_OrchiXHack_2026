@@ -15,7 +15,7 @@ workers sharing a port), persists to MongoDB via Mongoose, queues
 transactional email through a Redis-backed BullMQ queue, and serves waypoint
 media from Cloudinary.
 
-\begin{figure}[ht]\centering
+\begin{figure}[H]\centering
   \includegraphics[width=\textwidth]{architecture}
   \caption{System architecture: client, server, and data layers.}\label{fig:architecture}
 \end{figure}
@@ -80,7 +80,7 @@ Because the threshold, the distance check, and the awards all live
 server-side, a confirmed visit constitutes evidence of physical presence
 that a client cannot forge by manipulating its own state.
 
-\begin{figure}[ht]\centering
+\begin{figure}[H]\centering
   \includegraphics[width=\textwidth]{location-pipeline}
   \caption{Real-time location pipeline: from GPS fix to checkpoint confirmation.}\label{fig:pipeline}
 \end{figure}

@@ -1,0 +1,12 @@
+\documentclass{report}
+\usepackage{titlesec}
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd{\chapter}{\clearpage}{}{}{}
+\patchcmd{\chapter}{\cleardoublepage}{}{}{}
+\makeatother
+\begin{document}
+Some text.
+\chapter{Test}
+More text.
+\end{document}
