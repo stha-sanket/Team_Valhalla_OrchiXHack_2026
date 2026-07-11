@@ -2,71 +2,37 @@
 \label{app:code}
 
 \section*{Haversine Distance (server-side proximity)}
-\begin{lstlisting}[caption={Great-circle distance in metres (server/src/lib/proximity.ts).}]
-export function haversineDistanceMeters(lat1, long1, lat2, long2): number {
-  const R = 6371000; // Earth radius in metres
-  const phi1 = toRad(lat1);
-  const phi2 = toRad(lat2);
-  const dPhi = toRad(lat2 - lat1);
-  const dLambda = toRad(long2 - long1);
-  const a = Math.sin(dPhi / 2) ** 2 +
-            Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLambda / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-\end{lstlisting}
+\begin{figure}[H]\centering
+  \includegraphics[width=0.9\textwidth,keepaspectratio]{code-1}
+  \caption{Great-circle distance in metres (server/src/lib/proximity.ts).}
+\end{figure}
 
 \section*{Bearing to the Next Waypoint}
-\begin{lstlisting}[caption={True-north bearing driving the HUD arrow.}]
-export function bearingDegrees(lat1, long1, lat2, long2): number {
-  const dLng = toRad(long2 - long1);
-  const phi1 = toRad(lat1);
-  const phi2 = toRad(lat2);
-  const x = Math.sin(dLng) * Math.cos(phi2);
-  const y = Math.cos(phi1) * Math.sin(phi2) -
-            Math.sin(phi1) * Math.cos(phi2) * Math.cos(dLng);
-  return ((Math.atan2(x, y) * 180) / Math.PI + 360) % 360;
-}
-\end{lstlisting}
+\begin{figure}[H]\centering
+  \includegraphics[width=0.9\textwidth,keepaspectratio]{code-2}
+  \caption{True-north bearing driving the HUD arrow.}
+\end{figure}
 
 \section*{Compass Heading Smoothing (client)}
-\begin{lstlisting}[caption={Exponential moving average over the shortest angular path.}]
-let diff = rawHeading - prev;
-diff = (((diff + 180) % 360) + 360) % 360 - 180; // shortest path
-smoothedHeading = (prev + 0.15 * diff + 360) % 360;
-\end{lstlisting}
+\begin{figure}[H]\centering
+  \includegraphics[width=0.9\textwidth,keepaspectratio]{code-3}
+  \caption{Exponential moving average over the shortest angular path.}
+\end{figure}
 
 \section*{Idempotent Point Awards}
-\begin{lstlisting}[caption={The (source, ref\_id) ledger guard (server/src/lib/arPoints.ts).}]
-const alreadyAwarded = ledger.entries.some(
-  (e) => e.source === entry.source && e.ref_id === entry.ref_id,
-);
-if (alreadyAwarded) return null; // re-confirming can never farm points
-\end{lstlisting}
+\begin{figure}[H]\centering
+  \includegraphics[width=0.9\textwidth,keepaspectratio]{code-4}
+  \caption{The (source, ref\_id) ledger guard (server/src/lib/arPoints.ts).}
+\end{figure}
 
 \section*{AR Scene Configuration}
-\begin{lstlisting}[caption={A-Frame/AR.js location-based scene (injected under <body>).}]
-<a-scene
-  vr-mode-ui="enabled: false"
-  arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false"
-  renderer="antialias: true; alpha: true"
-  loading-screen="enabled: false">
-  <a-camera
-    id="camera"
-    gps-new-camera="gpsMinDistance: 3"
-    arjs-device-orientation-controls="smoothingFactor: 0.8"
-    look-controls-enabled="false">
-  </a-camera>
-</a-scene>
-\end{lstlisting}
+\begin{figure}[H]\centering
+  \includegraphics[width=0.9\textwidth,keepaspectratio]{code-5}
+  \caption{A-Frame/AR.js location-based scene (injected under <body>).}
+\end{figure}
 
 \section*{World-Anchored Video (GPS-jitter immunity)}
-\begin{lstlisting}[caption={Rotation frozen at spawn; position re-glued to the camera each frame.}]
-const follow = () => {
-  camObj.getWorldPosition(camPos);
-  obj.position.set(camPos.x + offset.x,
-                   camPos.y + offset.y,
-                   camPos.z + offset.z);
-  rafId = requestAnimationFrame(follow);
-};
-rafId = requestAnimationFrame(follow);
-\end{lstlisting}
+\begin{figure}[H]\centering
+  \includegraphics[width=0.9\textwidth,keepaspectratio]{code-6}
+  \caption{Rotation frozen at spawn; position re-glued to the camera each frame.}
+\end{figure}
