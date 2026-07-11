@@ -45,6 +45,11 @@
 
 % ---------- Headings ----------
 \usepackage{titlesec}
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd{\chapter}{\clearpage}{}{}{}
+\patchcmd{\chapter}{\cleardoublepage}{}{}{}
+\makeatother
 % Headings in Biolinum (sans), like acmart's section heads.
 \titleformat{\chapter}[display]
   {\normalfont\sffamily\huge\bfseries\color{orchidnavy}}
