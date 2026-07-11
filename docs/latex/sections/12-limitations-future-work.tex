@@ -1,10 +1,34 @@
-\chapter{Limitations \& Future Work}
+\chapter{Limitations and Future Work}
 \label{ch:future-work}
 
 \section{Known Limitations}
-\todo{GPS accuracy vs 10 m geofence, HTTPS requirement for camera,
-avatar CDN dependency, \ldots}
+\begin{itemize}
+  \item \textbf{GPS accuracy.} Consumer GPS is accurate to roughly
+        3--15\,m and degrades near buildings. Against a 10\,m geofence this
+        can require a user standing at a checkpoint to wait for the fix to
+        settle before the arrival prompt fires; the per-place radius
+        mitigates but does not eliminate this.
+  \item \textbf{Secure-context requirement.} Camera and precise
+        geolocation APIs are available only over HTTPS (or localhost); on
+        an insecure origin the system degrades to the compass-only HUD.
+  \item \textbf{External media dependencies.} Waypoint media is served
+        from Cloudinary and avatar images from a public CDN; both require
+        connectivity, and there is no offline mode.
+  \item \textbf{Compass variability.} Device magnetometers differ in
+        quality; non-absolute headings trigger a calibration banner and
+        may need a figure-eight gesture.
+  \item \textbf{Permanent quiz attempts.} An attempt is permanent even if
+        an administrator later edits the quiz content.
+  \item \textbf{Single language.} The interface and content are
+        English-only.
+\end{itemize}
 
 \section{Future Work}
-\todo{Roadmap items.}
-
+Planned directions, in rough priority order: additional heritage routes
+(the Kathmandu Valley UNESCO properties are natural candidates);
+multi-language content, which matters more for heritage visitors than for
+campus use; an in-dashboard quiz authoring interface (quizzes are currently
+managed through the API and seed scripts); richer analytics such as dwell
+time and per-waypoint drop-off; offline route bundles for areas with poor
+connectivity; native app packaging for tighter sensor access; and an
+accessibility pass across the exploration flow.

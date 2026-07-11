@@ -1,0 +1,32 @@
+flowchart LR
+  subgraph CLIENT["Client — smartphone browser"]
+    direction LR
+    PAGES["React 19 SPA<br/>role-gated routes"]
+    RTK["RTK Query<br/>API slices + cache"]
+    AR["A-Frame + AR.js<br/>camera scene (on demand)"]
+    WSC["WebSocket client<br/>GPS watch stream"]
+  end
+
+  subgraph SERVER["Server — express-file-cluster (2 workers)"]
+    direction LR
+    REST["REST API<br/>file-routed handlers<br/>cookie JWT auth"]
+    WSS["WebSocket<br/>/ws/pathfinder<br/>ticket auth"]
+    SVC["Service layer<br/>proximity · arPoints · tripSummaries"]
+    QUEUE["BullMQ queue<br/>async email"]
+  end
+
+  subgraph DATA["Data layer"]
+    direction LR
+    MONGO[("MongoDB<br/>10 collections")]
+    REDIS[("Redis<br/>job persistence")]
+    CDN["Cloudinary<br/>waypoint media"]
+  end
+
+  RTK -- "HTTPS / REST" --> REST
+  WSC -- "location / confirm frames" --> WSS
+  REST --> SVC
+  WSS --> SVC
+  REST --> QUEUE
+  SVC --> MONGO
+  QUEUE --> REDIS
+  AR -. "media URLs" .-> CDN

@@ -2,16 +2,57 @@
 \label{ch:results}
 
 \section{Delivered Features}
-\todo{Checklist of shipped functionality.}
+The hackathon build delivers a complete vertical slice, working end to end:
+
+\begin{itemize}
+  \item \textbf{Exploration.} Route selection, live compass HUD with
+        distance readout, AR camera overlay with world-anchored story
+        videos, geofence-verified two-phase checkpoint confirmation, media
+        unlocks per waypoint type, side-quest dwell timer, revisit with
+        progress reset, and a GPS-free demo mode.
+  \item \textbf{Gamification.} Private AR~Points ledger with idempotent
+        awards, permanent milestone log and badges, per-place quizzes with
+        completion lock, single attempt, and answer review, and a rewards
+        catalog with confirm-before-spend redemption.
+  \item \textbf{Community.} Public profiles, a people directory with
+        debounced search, and a leaderboard ranked by milestones, places,
+        or side quests with AR~Points kept private.
+  \item \textbf{Administration.} A role-separated admin experience:
+        statistics dashboard with 30-day signup and milestone trends, user
+        management (verify, suspend, reactivate, promote, delete), the
+        waypoint logger for route authoring, and per-place quiz and
+        geofence-radius configuration.
+\end{itemize}
+
+\section{Field Test}
+The complete loop was validated on the seeded Orchid College route
+(eight waypoints, $\sim$400\,m) and a second short route at the hackathon
+venue. Real users registered, walked the routes, and confirmed checkpoints:
+arrival prompts fired inside the 10\,m geofence, confirmations persisted
+across sessions, milestone videos played anchored in the camera view, the
+side-quest timer enforced the five-minute stay, badges and completion
+points were awarded exactly once per user, quizzes unlocked only after
+completion, and redeemed rewards appeared as negative ledger entries. The
+place visitor counters advanced once per unique completer, and the admin
+dashboard reflected the activity without any manual instrumentation.
 
 \section{Screenshots}
-\todo{Figures: explore, AR view, quiz, redeem, leaderboard, admin dashboard.}
+Screenshots of the main surfaces (explore, AR navigation, quiz, redemption,
+leaderboard, and admin dashboard) are to be captured from the deployed
+build and inserted here.
+
 % \begin{figure}[h]\centering
 %   \includegraphics[width=0.45\textwidth]{screen-explore}\hfill
 %   \includegraphics[width=0.45\textwidth]{screen-ar}
-%   \caption{Explore page and AR navigation}
+%   \caption{Explore page and AR navigation.}\label{fig:screens-1}
 % \end{figure}
-
-\section{Field Test}
-\todo{Observations from the Orchid campus walk.}
-
+% \begin{figure}[h]\centering
+%   \includegraphics[width=0.45\textwidth]{screen-quiz}\hfill
+%   \includegraphics[width=0.45\textwidth]{screen-redeem}
+%   \caption{Quiz review and rewards redemption.}\label{fig:screens-2}
+% \end{figure}
+% \begin{figure}[h]\centering
+%   \includegraphics[width=0.45\textwidth]{screen-leaderboard}\hfill
+%   \includegraphics[width=0.45\textwidth]{screen-admin}
+%   \caption{Community leaderboard and admin dashboard.}\label{fig:screens-3}
+% \end{figure}

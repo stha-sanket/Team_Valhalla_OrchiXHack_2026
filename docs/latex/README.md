@@ -4,14 +4,19 @@ Template only — every section is a placeholder marked with red `[TODO: …]`
 tags. Content gets ported from the markdown base in `docs/*.md`; each section
 file has a `% Port from:` comment naming its source file.
 
+Typeset in **Linux Libertine / Biolinum** — the same typefaces the ACM
+`acmart` class (ACM COMPASS proceedings) uses. The `.otf` files are vendored
+in `fonts/`, so no TeX font packages are required — but the build must use
+**XeLaTeX** (not pdflatex), which loads them via `fontspec`.
+
 ## Build
 
 ```bash
 cd docs/latex
-pdflatex main && bibtex main && pdflatex main && pdflatex main
+xelatex main && bibtex main && xelatex main && xelatex main
 ```
 
-(or `latexmk -pdf main` if latexmk is installed). Output: `main.pdf`.
+(or `latexmk -xelatex main` if latexmk is installed). Output: `main.pdf`.
 
 ## Layout
 

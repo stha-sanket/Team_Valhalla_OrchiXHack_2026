@@ -1,13 +1,85 @@
 \chapter{API Reference}
 \label{app:api}
-% Port from: docs/06_api_reference.md
+% Condensed from docs/06_api_reference.md
 
-\todo{Endpoint tables grouped by area. Example row format:}
+All REST endpoints live under the server base URL. Authentication uses
+HTTP-only cookie JWTs (access + refresh); the WebSocket authenticates with
+a short-lived ticket obtained over authenticated REST. ``User'' means any
+signed-in account; ``admin'' requires the admin role.
 
-% \begin{longtable}{@{}lll@{}}\toprule
-% Endpoint & Auth & Description \\ \midrule
-% \apiroute{GET}{/api/visiting-places} & user, admin & List places \\
-% \bottomrule
-% \caption{Visiting places endpoints}
-% \end{longtable}
+\begingroup\small
+\begin{longtable}{@{}p{0.50\textwidth}p{0.09\textwidth}p{0.35\textwidth}@{}}
+  \caption{REST API endpoints.}\label{tab:api}\\
+  \toprule
+  \textbf{Endpoint} & \textbf{Auth} & \textbf{Description} \\
+  \midrule
+  \endfirsthead
+  \toprule
+  \textbf{Endpoint} & \textbf{Auth} & \textbf{Description} \\
+  \midrule
+  \endhead
+  \bottomrule
+  \endfoot
+  \multicolumn{3}{@{}l}{\textit{Authentication}} \\
+  \apiroute{POST}{/api/auth/register} & --- & Create an account \\
+  \apiroute{POST}{/api/auth/login} & --- & Log in; sets auth cookies \\
+  \apiroute{POST}{/api/auth/logout} & user & Clear cookies, revoke refresh token \\
+  \apiroute{GET}{/api/auth/me} & user & Authenticated identity \\
+  \apiroute{POST}{/api/auth/refresh} & --- & Rotate the access token \\
+  \apiroute{POST}{/api/auth/verify-email} & --- & Verify email by token \\
+  \apiroute{POST}{/api/auth/forgot-password} & --- & Send reset email \\
+  \apiroute{POST}{/api/auth/reset-password} & --- & Reset password by token \\
+  \apiroute{POST}{/api/auth/change-password} & user & Change own password \\
+  \apiroute{GET}{/api/ws/ticket} & user & Short-lived WebSocket ticket \\
+  \midrule
+  \multicolumn{3}{@{}l}{\textit{Visiting places and routes}} \\
+  \apiroute{GET}{/api/visiting-places} & user & List places (incl.\ geofence radius, visitor count) \\
+  \apiroute{POST}{/api/visiting-places} & admin & Create a place \\
+  \apiroute{PUT}{/api/visiting-places/:id} & admin & Update a place (incl.\ geofence radius) \\
+  \apiroute{DELETE}{/api/visiting-places/:id} & admin & Delete place, cascade routes/progress \\
+  \apiroute{GET}{/api/visiting-routes} & user & Waypoints of a place, ordered \\
+  \apiroute{POST}{/api/visiting-routes} & admin & Create a waypoint \\
+  \apiroute{PUT}{/api/visiting-routes/:id} & admin & Update a waypoint \\
+  \apiroute{DELETE}{/api/visiting-routes/:id} & admin & Delete a waypoint \\
+  \midrule
+  \multicolumn{3}{@{}l}{\textit{Progress, quiz, points}} \\
+  \apiroute{GET}{/api/user-progress} & user & Own progress for a place \\
+  \apiroute{POST}{/api/user-progress} & user & Seed progress (idempotent) \\
+  \apiroute{GET}{/api/user-progress/summary} & user & Trips, milestones, badge status \\
+  \apiroute{POST}{/api/user-progress/reset} & user & Reset a route for a revisit \\
+  \apiroute{GET}{/api/visiting-places/:id/quiz} & user & Quiz (answers stripped; locked until complete) \\
+  \apiroute{POST}{/api/visiting-places/:id/quiz/attempt} & user & Submit the single attempt \\
+  \apiroute{PUT}{/api/visiting-places/:id/quiz} & admin & Create/replace the 5-question quiz \\
+  \apiroute{GET}{/api/user/points} & user & Private balance, ledger, rewards catalog \\
+  \apiroute{POST}{/api/user/points/redeem} & user & Redeem a reward \\
+  \midrule
+  \multicolumn{3}{@{}l}{\textit{Community}} \\
+  \apiroute{GET}{/api/users/search} & user & Search members by name/email (public card data) \\
+  \apiroute{GET}{/api/users/leaderboard} & user & Ranked by milestones / places / side quests \\
+  \apiroute{GET}{/api/users/:id} & user & Public profile (no email, no points) \\
+  \apiroute{GET}{/api/user/profile} & user & Own profile \\
+  \apiroute{PUT}{/api/user/profile} & user & Update name, email, avatar \\
+  \midrule
+  \multicolumn{3}{@{}l}{\textit{Administration}} \\
+  \apiroute{GET}{/api/admin/dashboard} & admin & Platform statistics \\
+  \apiroute{GET}{/api/admin/analytics} & admin & Trends and per-place completion \\
+  \apiroute{GET}{/api/admin/users} & admin & List users (paginated) \\
+  \apiroute{PUT}{/api/admin/users/:id} & admin & Update role/identity/status \\
+  \apiroute{POST}{/api/admin/users/:id/suspend} & admin & Suspend account \\
+  \apiroute{POST}{/api/admin/users/:id/activate} & admin & Reactivate account \\
+  \apiroute{POST}{/api/admin/users/:id/verify} & admin & Mark email verified \\
+  \apiroute{DELETE}{/api/admin/users/:id} & admin & Delete account \\
+  \apiroute{GET}{/api/health} & --- & Liveness check \\
+\end{longtable}
+\endgroup
 
+\section{WebSocket Protocol}
+The pathfinder channel is
+\code{/ws/pathfinder?ticket=<JWT>\&visiting\_place\_id=<id>}. The client
+sends \code{location} frames (\code{\{type, lat, long\}}) as geolocation
+fixes arrive and \code{confirm\_visit} frames (\code{\{type, route\_id\}})
+when the user confirms. The server replies to every location with a
+\code{progress} frame --- next waypoint, distance, bearing, the place's
+geofence radius, and \code{arrived}/\code{allVisited} flags --- and to every
+confirmation with a \code{visit\_result} frame carrying \code{confirmed}
+and, on rejection, a human-readable \code{reason}.

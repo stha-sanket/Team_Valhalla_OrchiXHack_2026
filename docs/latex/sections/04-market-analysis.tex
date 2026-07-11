@@ -1,20 +1,60 @@
-\chapter{Market Analysis}
+\chapter{Market Context}
 \label{ch:market-analysis}
-% Port from: docs/02_market_analysis.md
+% Condensed summary of docs/02_market_analysis.md
 
 \section{Target Users}
-\todo{Segments and their needs.}
+\projectname{} serves three user groups. \textbf{Students and campus
+newcomers} are the primary segment: orientation is chaotic, campus geography
+is unfamiliar, and nothing incentivises exploration; the platform gives them
+a self-guided AR tour with badges, a peer leaderboard, and tangible perks.
+\textbf{Heritage-site visitors}, domestic and international, form the
+secondary segment: guides are scarce and cultural context is inaccessible on
+site; the platform provides a GPS-guided route with story media at each
+monument and a quiz to reinforce learning. \textbf{Site administrators and
+institutions} are the tertiary segment: guided tours cost staff time, produce
+no data, and end after orientation day; the platform replaces them with a
+zero-hardware digital experience and visitor-count analytics.
+
+\section{Why Nepal}
+Nepal received 1.147 million international tourists in
+2024,\footnote{\url{https://tourism.gov.np/content/83/nepal-tourism-statistics-2024/}}
+holds ten UNESCO World Heritage properties (four cultural sites in the
+Kathmandu Valley alone),\footnote{\url{https://whc.unesco.org/en/statesparties/np/}}
+and derives roughly 7--8\,\% of GDP from tourism. Physical tourism centres
+are scarce, and UNESCO explicitly observes that few World Heritage sites
+provide accessible digital visitor resources. The market therefore combines
+a large addressable audience with a documented absence of digital
+infrastructure.
 
 \section{Existing Solutions}
-\todo{Competitor / alternative overview table.}
-% \begin{table}[h]\centering
-%   \begin{tabular}{@{}lll@{}}\toprule
-%   Solution & Strengths & Gaps \\ \midrule
-%   \todo{...} & & \\ \bottomrule
-%   \end{tabular}
-%   \caption{Comparison of existing solutions}
-% \end{table}
+Table~\ref{tab:competitors} summarises the Nepal-specific alternatives. None
+combines real-time wayfinding, AR presentation, presence verification, and
+gamified engagement; one (Saarang) additionally depends on physical QR
+boards installed and maintained at every site.
+
+\begin{table}[h]
+  \centering\small
+  \begin{tabular}{@{}p{0.24\textwidth}p{0.36\textwidth}p{0.32\textwidth}@{}}
+    \toprule
+    \textbf{Solution} & \textbf{Mechanic} & \textbf{Gap} \\
+    \midrule
+    HoneyGuide Nepal & Curated cultural walking guides & No AR, no navigation loop, no gamification \\
+    Nepal Heritage App & Archival site documentation & Database, not a guided journey \\
+    GPSmyCity & Generic self-guided GPS city tours & No AR, no engagement mechanics, city-scale only \\
+    Kathmandu Durbar App & Paid GPS walking-tour product & Single product, no platform or admin tooling \\
+    Lokalee & Digital concierge with one heritage trail & Tours are peripheral to a booking app \\
+    Saarang & QR storyboards installed at sites & Physical hardware per site; no navigation \\
+    \bottomrule
+  \end{tabular}
+  \caption{Nepal-specific competitive landscape.}
+  \label{tab:competitors}
+\end{table}
 
 \section{Differentiation}
-\todo{What \projectname{} does that the alternatives do not.}
-
+\projectname{} addresses every gap in Table~\ref{tab:competitors} at once:
+browser-based location AR with zero physical installation, a live wayfinding
+loop over WebSocket, geofence-verified presence, a full gamification layer
+(points, badges, quizzes, side quests, redemption), and an admin GUI with
+which any institution can configure a new route in minutes. The campus focus
+is itself a differentiator: the listed competitors target city-scale tourism
+and leave controlled premises such as campuses and museums unserved.

@@ -2,15 +2,95 @@
 \label{ch:ar-pathfinder}
 % Port from: docs/10_ar_pathfinder.md
 
-\section{Geofenced Checkpoints}
-\todo{10 m dynamic threshold, physical-presence guarantee, confirmation flow.}
+The pathfinder combines four real-time data streams --- GPS coordinates,
+device compass heading, WebSocket proximity messages, and camera-based AR
+rendering --- into one navigation experience. Code listings for the formulas
+referenced here appear in Appendix~\ref{app:code}.
 
-\section{AR Guidance}
-\todo{A-Frame + AR.js location-based scene, compass HUD, anchored video.}
+\section{Geofencing and Two-Phase Arrival}
+All proximity checks run server-side using the haversine great-circle
+formula, accurate to well under a metre at campus distances --- far finer
+than the 3--5\,m accuracy of consumer GPS itself. A waypoint counts as
+reached when the reported position falls within the place's geofence
+radius. The radius --- the \code{visit\_threshold\_meters} field on the
+place --- defaults to 10\,m rather than being hard-coded: dense
+environments may need a
+tighter fence to avoid false arrivals, open spaces a looser one to absorb
+GPS drift, and administrators can tune it without a deployment.
+
+Arrival is deliberately a two-phase process. Detection --- the server
+reporting \code{arrived: true} --- only raises a confirmation prompt.
+The checkpoint is marked visited only when the user explicitly confirms,
+and the server re-validates the last reported position against the same
+radius before accepting. A momentary GPS glitch therefore cannot complete a
+checkpoint, and a confirmed visit is backed by two independent
+within-radius checks.
+
+\section{Compass Guidance}
+The server includes a true-north bearing to the next waypoint in every
+progress frame. The client subtracts the device's compass heading to obtain
+the relative bearing that drives the HUD arrow. Two engineering details
+make this usable. First, raw \code{DeviceOrientationEvent} readings jitter
+by several degrees per frame, so headings pass through an exponential
+moving average (weight 0.15 on the new reading) that removes jitter while
+still responding to turns within about two seconds. Second, orientation
+events arrive at up to 60\,Hz; routing them through React state would
+re-render the component tree at that rate, so the arrow and distance text
+are updated imperatively through refs, bypassing rendering entirely. iOS
+additionally requires an explicit permission request for orientation data,
+which is why navigation can only start from a button press (a user
+gesture).
+
+\section{AR Camera Layer}
+The AR view uses A-Frame with AR.js location-based tracking, with the
+camera feed rendered as a WebGL texture. The \code{<a-scene>} element is
+injected directly under \code{<body>}, outside the React tree --- A-Frame
+requires this to size its fullscreen canvas correctly --- and is fully torn
+down (including stopping webcam tracks) when navigation ends. The vendor
+scripts are served locally and loaded on demand only when AR mode starts,
+which pins versions (A-Frame 1.6.0, AR.js 3.4.7), avoids ad-blocker
+interference, and keeps the initial page load small.
+
+Milestone and side-quest videos play on a plane anchored in world space.
+Anchoring by GPS coordinates would make the plane jump with satellite
+drift, so instead the plane spawns four metres in front of the camera, its
+rotation frozen at spawn (looking around pans off it, as with a real
+object), while its position is re-glued to the camera's translation every
+animation frame. The result reads as ``placed in the world'' yet is immune
+to GPS jitter.
 
 \section{Waypoint Types}
-\todo{start / node / milestone / side\_quest / end and their behaviours.}
+\begin{table}[h]
+  \centering\small
+  \begin{tabular}{@{}lp{0.68\textwidth}@{}}
+    \toprule
+    \textbf{Type} & \textbf{Behaviour on arrival} \\
+    \midrule
+    \code{start} & Confirmation prompt; opening image shown \\
+    \code{node} & Turn point; directional image shown on confirmation \\
+    \code{milestone} & Video plays; confirmation awards points and logs the milestone \\
+    \code{side\_quest} & Video plays; accept starts the 5-minute dwell timer, skip continues \\
+    \code{end} & Final checkpoint; completion image and trip-complete state \\
+    \bottomrule
+  \end{tabular}
+  \caption{Waypoint type semantics.}
+  \label{tab:waypoints}
+\end{table}
 
-\section{Demo Mode}
-\todo{Simulated walk for judging without GPS.}
+\section{Graceful Degradation and Demo Mode}
+The design principle is that the compass arrow is always the fallback.
+Without HTTPS (camera APIs require a secure context) or if the AR scripts
+fail to load, navigation continues with the compass HUD and a visible
+notice; if video autoplay is blocked, a tap-to-play overlay appears; if the
+compass reports non-absolute headings, a calibration banner is shown.
+A separate demo mode bypasses GPS entirely: it replays the real route from
+hardcoded waypoints with a ``simulate arrival'' control, exercising the
+complete flow --- media, confirmations, rewards UI --- indoors, which is
+essential for stage demonstrations and QA.
 
+\section{The Seeded Route}
+The production route walks Orchid College over approximately 400\,m
+(five to seven minutes): a start point, three turn nodes, two milestones
+with video stories (the parking area and Orchid International College), one
+side quest (Bishwajit Medical Hall), and an end point, with a 10\,m
+geofence per waypoint and the college badge on completion.

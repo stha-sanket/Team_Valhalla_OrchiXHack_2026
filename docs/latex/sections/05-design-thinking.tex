@@ -1,16 +1,58 @@
-\chapter{Design Thinking}
+\chapter{Design Process}
 \label{ch:design-thinking}
-% Port from: docs/03_design_thinking.md
+% Condensed summary of docs/03_design_thinking.md
 
-\section{Empathise}
-\todo{User research / assumptions.}
+The product was shaped by one pass through the Stanford d.school
+design-thinking cycle (empathise, define, ideate, prototype, test). This
+chapter summarises the decisions that survived into the build.
 
-\section{Define}
-\todo{Point-of-view statements.}
+\section{Research and Definition}
+Empathy work combined informal interviews with eight first-year students at
+Orchid College, observation of a standard orientation day, a review of campus
+group chats for recurring lost/confused messages, and desk research on Nepal
+tourism. Recurring findings: students still could not locate basic facilities
+months after orientation (``I still don't know where the parking area is
+after 3 months''); the guided tour moved too fast to retain; staff spent
+3+ hours per orientation day on tour logistics; and the campus's history had
+no accessible presentation. The problem was framed as: how might we create a
+heritage and campus exploration experience that is self-directed, GPS-guided,
+and story-rich, so that visitors feel oriented and engaged while institutions
+gain digital visibility with zero hardware.
 
-\section{Ideate}
-\todo{Options considered.}
+Three personas guided prioritisation: a first-year student who needs fast
+orientation and a sense of belonging; an orientation coordinator who needs to
+reduce manual effort and obtain engagement data without being a developer;
+and a competitive second-year student motivated by badges, points, and
+rankings.
 
-\section{Prototype \& Test}
-\todo{What was prototyped, what feedback changed.}
+\section{Selected and Rejected Ideas}
+Ideation converged on GPS-anchored AR overlays, story videos at milestones,
+physical reward redemption, post-route quizzes, optional side quests, a
+community page, and an admin waypoint logger --- all shipped. Rejected for
+feasibility or scope: real-time multiplayer racing, QR-code check-ins (no AR
+value), and creature-collection mechanics. The product was built as a web
+application rather than a native app so that users enter through a URL with
+no installation, one codebase covers Android and iOS browsers, and admins use
+the same origin with role-based routing.
 
+\section{Validation During the Build}
+Field testing directly changed the design, as summarised in
+Table~\ref{tab:validation}.
+
+\begin{table}[h]
+  \centering\small
+  \begin{tabular}{@{}p{0.42\textwidth}p{0.50\textwidth}@{}}
+    \toprule
+    \textbf{Observation} & \textbf{Design response} \\
+    \midrule
+    5\,m arrival threshold too tight; users could not trigger arrival & Default geofence raised to 10\,m and made admin-configurable per place \\
+    AR video autoplay blocked on iOS & Tap-to-play fallback overlay \\
+    Compass inert on first launch (iOS) & Explicit \code{DeviceOrientationEvent} permission gate behind a user gesture \\
+    Quiz felt like a chore after a walk & Capped at five questions; answer-review mode added after the single attempt \\
+    Redemption page hard to discover & AR-points balance surfaced on the dashboard header \\
+    Indoor demos impossible without GPS & Full demo mode with simulated arrivals \\
+    \bottomrule
+  \end{tabular}
+  \caption{Field observations and the design responses they produced.}
+  \label{tab:validation}
+\end{table}

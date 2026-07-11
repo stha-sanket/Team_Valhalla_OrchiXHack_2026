@@ -1,10 +1,11 @@
 % =====================================================================
 %  ARadhana — Project Documentation Template
-%  Build:  pdflatex main && bibtex main && pdflatex main && pdflatex main
+%  Build (XeLaTeX — required for the ACM fonts):
+%    xelatex main && bibtex main && xelatex main && xelatex main
 %  Structure mirrors docs/*.md so content can be ported section by section.
 %  Every section file contains TODO markers — nothing is prefilled.
 % =====================================================================
-\documentclass[12pt,a4paper]{report}
+\documentclass[11pt,a4paper]{report}
 
 % ---------- Layout ----------
 \usepackage[a4paper,margin=1in]{geometry}
@@ -12,27 +13,45 @@
 \onehalfspacing
 \usepackage{parskip}
 
-% ---------- Fonts & language ----------
-\usepackage[T1]{fontenc}
-\usepackage[utf8]{inputenc}
-\usepackage{lmodern}
+% ---------- Fonts: ACM's typefaces (Linux Libertine / Biolinum) ----------
+% Same fonts the acmart class (ACM COMPASS proceedings) uses. Shipped in
+% fonts/ so the template is self-contained — no TeX font packages needed.
+\usepackage{fontspec}
+\setmainfont{LinLibertine}[
+  Path           = fonts/,
+  Extension      = .otf,
+  UprightFont    = *_R,
+  BoldFont       = *_RB,
+  ItalicFont     = *_RI,
+  BoldItalicFont = *_RBI,
+]
+\setsansfont{LinBiolinum}[
+  Path        = fonts/,
+  Extension   = .otf,
+  UprightFont = *_R,
+  BoldFont    = *_RB,
+  ItalicFont  = *_RI,
+]
 \usepackage[english]{babel}
 
-% ---------- Brand colors (match the app's Tailwind palette) ----------
+% ---------- Colors: grayscale only — accents are black, no colorful paper ----------
+% The two accent names are kept so the rest of the template doesn't change;
+% both resolve to black.
 \usepackage{xcolor}
-\definecolor{orchidcrimson}{HTML}{DC143C}
-\definecolor{orchidnavy}{HTML}{003893}
-\definecolor{codegray}{HTML}{F5F4F0}
-\definecolor{inkmuted}{HTML}{6B6558}
+\definecolor{orchidcrimson}{HTML}{000000}
+\definecolor{orchidnavy}{HTML}{000000}
+\definecolor{codegray}{HTML}{F2F2F2}
+\definecolor{inkmuted}{HTML}{555555}
 
 % ---------- Headings ----------
 \usepackage{titlesec}
+% Headings in Biolinum (sans), like acmart's section heads.
 \titleformat{\chapter}[display]
-  {\normalfont\huge\bfseries\color{orchidnavy}}
-  {\color{inkmuted}\large Chapter \thechapter}{12pt}{\Huge}
+  {\normalfont\sffamily\huge\bfseries\color{orchidnavy}}
+  {\color{inkmuted}\sffamily\large Chapter \thechapter}{12pt}{\Huge}
 \titlespacing*{\chapter}{0pt}{0pt}{28pt}
-\titleformat*{\section}{\Large\bfseries\color{orchidnavy}}
-\titleformat*{\subsection}{\large\bfseries}
+\titleformat*{\section}{\sffamily\Large\bfseries\color{orchidnavy}}
+\titleformat*{\subsection}{\sffamily\large\bfseries}
 
 % ---------- Header / footer ----------
 \usepackage{fancyhdr}
@@ -58,8 +77,8 @@
 \lstdefinestyle{orchidcode}{
   backgroundcolor=\color{codegray},
   basicstyle=\ttfamily\small,
-  keywordstyle=\color{orchidnavy}\bfseries,
-  stringstyle=\color{orchidcrimson},
+  keywordstyle=\bfseries,
+  stringstyle=\color{inkmuted},
   commentstyle=\color{inkmuted}\itshape,
   numbers=left,
   numberstyle=\tiny\color{inkmuted},
@@ -79,14 +98,14 @@
 }
 
 % ---------- Links (load last) ----------
+% Let long URLs (footnote citations) break at hyphens and more characters.
+\PassOptionsToPackage{hyphens}{url}
 \usepackage[hidelinks]{hyperref}
+\urlstyle{tt}
+\Urlmuskip=0mu plus 2mu
 \hypersetup{
-  pdftitle={ARadhana — Project Documentation},
-  pdfauthor={TODO: team name},
-  colorlinks=true,
-  linkcolor=orchidnavy,
-  urlcolor=orchidcrimson,
-  citecolor=orchidnavy,
+  pdftitle={ARadhana: A Geofence Based Augmented Reality Navigation and Game Platform for Heritage Exploration},
+  pdfauthor={Valhalla},
 }
 
 % ---------- Convenience macros ----------
@@ -99,51 +118,65 @@
 % =====================================================================
 \begin{document}
 
-% ---------------- Title page ----------------
-\begin{titlepage}
-  \centering
-  \vspace*{1.5cm}
-  % \includegraphics[width=0.35\textwidth]{logo}\\[1cm]   % TODO: drop logo into figures/
-  {\color{orchidcrimson}\rule{\textwidth}{2pt}}\\[1.2cm]
-  {\Huge\bfseries\color{orchidnavy}\projectname}\\[0.4cm]
-  {\Large AR-Guided Heritage \& Campus Exploration}\\[0.2cm]
-  {\large\color{inkmuted}\todo{one-line tagline}}\\[1.2cm]
-  {\color{orchidcrimson}\rule{\textwidth}{2pt}}\\[2cm]
+% ---------------- Title block (research-paper style, no cover page) ----------------
+\thispagestyle{plain} % no running header on the opening page
+\begin{center}
+  {\sffamily\LARGE\bfseries\color{orchidnavy}%
+    \projectname: A Geofence based Augmented Reality navigation
+    and Game Platform for Heritage Exploration\par}
+  \vspace{10pt}
 
-  {\large\textbf{Project Documentation}}\\[2cm]
+  % Authors — two per row so the long emails get room; all black, equal boxes.
+  \parbox[t]{0.45\textwidth}{\centering
+    \textbf{Sanket Shrestha}\\
+    {\small Sunway College Kathmandu}\\
+    {\small sanket\_24128469@sunway.edu.np}}%
+  \parbox[t]{0.45\textwidth}{\centering
+    \textbf{Prashant Adhikari}\\
+    {\small Sunway College Kathmandu}\\
+    {\small prashant\_adhikari\_a25@sunway.edu.np}}\\[10pt]
+  \parbox[t]{0.45\textwidth}{\centering
+    \textbf{Rishu Prajapati}\\
+    {\small Sunway College Kathmandu}\\
+    {\small rishu\_prajapati\_a25@sunway.edu.np}}\\[10pt]
 
-  \begin{tabular}{r l}
-    \textbf{Team}       & \todo{team name}            \\[6pt]
-    \textbf{Members}    & \todo{member 1}             \\
-                        & \todo{member 2}             \\
-                        & \todo{member 3}             \\[6pt]
-    \textbf{Event}      & \todo{hackathon / course}   \\[6pt]
-    \textbf{Institution}& \todo{institution}          \\[6pt]
-    \textbf{Date}       & \today                      \\
-  \end{tabular}
-
-  \vfill
-  {\small\color{inkmuted}\todo{footer note, e.g. supervisor / mentor}}
-\end{titlepage}
-
-% ---------------- Front matter ----------------
-\pagenumbering{roman}
-
-\chapter*{Abstract}
-\addcontentsline{toc}{chapter}{Abstract}
-\todo{150--250 word summary: what \projectname{} is, the problem it solves,
-the approach (AR pathfinding + gamification), and the headline outcome.}
+  {\small\color{inkmuted}Orchid HackX 2026 \,\textperiodcentered\, Team Valhalla \,\textperiodcentered\, \today}\\[4pt]
+  {\color{orchidcrimson}\rule{0.6\textwidth}{0.8pt}}
+\end{center}
 
 \vspace{1em}
-\noindent\textbf{Keywords:} \todo{augmented reality, geofencing, gamification, \ldots}
 
-\tableofcontents
-\listoffigures
-\listoftables
+% ---------------- Executive summary (in place of an abstract) ----------------
+{\noindent\sffamily\large\bfseries\color{orchidnavy}Executive Summary}\\[6pt]
+Navigation for visitors in Nepal typically ends at the entrance of a heritage
+site or campus: beyond the gate there is no structured guidance, no contextual
+storytelling, and no way for an institution to know whether anyone actually
+explored what lies inside. \projectname{} closes that gap with a browser-based
+platform that turns a visit into a guided, verifiable, and rewarding
+experience. A visitor picks a mapped route and is steered from checkpoint to
+checkpoint by a live compass and an augmented-reality camera view; each
+checkpoint is protected by a geofence (a configurable radius, 10\,m by
+default) so location-specific videos and stories unlock only when the visitor
+is physically present and confirms arrival. Exploration is gamified end to
+end: milestones and side quests pay out private AR~Points, completing a route
+earns a permanent badge and unlocks a five-question quiz, points can be
+redeemed for tangible campus perks, and a community leaderboard ranks
+explorers by milestones, places, and side quests. Institutions manage
+everything without code --- routes, geofence radii, quizzes, users, and
+engagement analytics --- through a separate administrator dashboard. The
+complete system was built and field-tested at Orchid College in Kathmandu
+during Orchid HackX 2026: real users completed the seeded campus routes,
+earned badges and points, and appeared on the leaderboard, demonstrating a
+working vertical slice that can be pointed at any campus, museum, or heritage
+site with nothing more than an admin account and a set of coordinates.
+
+\vspace{0.5em}
+\noindent\textbf{Keywords:} augmented reality, geofencing, GPS navigation,
+gamification, cultural heritage, campus exploration, web AR, Nepal tourism
+
 \clearpage
-
-% ---------------- Main matter ----------------
-\pagenumbering{arabic}
+\tableofcontents
+\clearpage
 
 \input{sections/01-introduction}
 \input{sections/02-problem-statement}
@@ -160,7 +193,8 @@ the approach (AR pathfinding + gamification), and the headline outcome.}
 \input{sections/13-conclusion}
 
 % ---------------- References ----------------
-\nocite{*} % template: list all .bib entries even before anything is cited
+\renewcommand{\bibname}{References}
+\nocite{*} % list all .bib entries even before inline \cite marks are added
 \bibliographystyle{ieeetr}
 \bibliography{references}
 \addcontentsline{toc}{chapter}{References}
@@ -168,6 +202,7 @@ the approach (AR pathfinding + gamification), and the headline outcome.}
 % ---------------- Appendices ----------------
 \appendix
 \input{sections/appendix-a-api-reference}
-\input{sections/appendix-b-folder-structure}
+\input{sections/appendix-b-schemas}
+\input{sections/appendix-c-code}
 
 \end{document}
