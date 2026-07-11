@@ -1,0 +1,41 @@
+erDiagram
+  USER ||--o| AR_POINTS : "owns ledger"
+  USER ||--o{ USER_PROGRESS : "walks"
+  USER ||--o{ QUIZ_ATTEMPT : "attempts once"
+  VISITING_PLACE ||--o{ VISITING_ROUTES : "has waypoints"
+  VISITING_PLACE ||--o{ USER_PROGRESS : "tracked in"
+  VISITING_PLACE ||--o| QUIZ : "one quiz"
+  QUIZ ||--o{ QUIZ_ATTEMPT : "graded as"
+
+  USER {
+    string name
+    string email
+    string role
+    array milestones
+  }
+  VISITING_PLACE {
+    string name
+    number visit_threshold_meters
+    number visitor_count
+    string badge
+  }
+  VISITING_ROUTES {
+    string type
+    object coordinates
+    string media
+    number index
+  }
+  USER_PROGRESS {
+    array route_progress
+  }
+  AR_POINTS {
+    number total
+    array entries
+  }
+  QUIZ {
+    array questions
+  }
+  QUIZ_ATTEMPT {
+    array answers
+    number correct_count
+  }

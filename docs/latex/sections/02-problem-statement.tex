@@ -1,0 +1,108 @@
+\chapter{Problem Statement}
+\label{ch:problem-statement}
+
+The problem this project addresses can be stated in a single sentence:
+
+\begin{quote}
+Existing navigation systems stop at the entrance of heritage sites, leaving
+visitors without guidance to explore monuments, discover historical
+significance, or experience Nepal's cultural heritage in a structured and
+engaging way.
+\end{quote}
+
+\section{The Situation}
+Nepal welcomed 1.147 million international tourists in
+2024~\cite{nepaltourism2024},
+and its heritage sites collectively receive over a million visitors
+annually. Consumer navigation applications serve these visitors well up to a
+point: they can route anyone to the gate of a temple complex, a museum, or a
+university campus. Beyond the gate, however, the visitor is on their own.
+Physical tourism centres --- which provide maps, information about places of
+interest, and basic visitor services --- have been established in Nepal only
+in limited places, a scarcity identified in the literature as a serious
+deterrent to the development of tourism in the
+country~\cite{nepaltourismchallenges}.
+The same pattern holds at a smaller scale on educational campuses, where
+newcomers face unfamiliar geography with no structured way to explore it.
+
+\section{The Specific Gap}
+Once inside a site, four things are missing.
+
+\begin{enumerate}
+  \item \textbf{No structured navigation.} There is no guided route through
+        the premises; visitors wander, miss significant locations, and have
+        no sense of a complete journey.
+  \item \textbf{No contextual storytelling.} The history and significance of
+        each monument or location is not delivered at the place itself,
+        where it would be most meaningful.
+  \item \textbf{No engagement incentive.} Nothing rewards deeper
+        exploration, revisits, or learning; the visit is passive.
+  \item \textbf{No verification of presence.} Institutions have no way to
+        confirm that a visitor actually stood at a location, which rules out
+        trustworthy completion records, rewards, or engagement analytics.
+\end{enumerate}
+
+This gap is not merely anecdotal. UNESCO recommends that every heritage site
+provide visitors with easily accessible information --- maps, navigation, and
+cultural interpretation --- through a centralised platform, while observing
+that surprisingly few World Heritage sites actually provide such accessible
+digital
+resources~\cite{unescotoolkit}.
+UN Tourism likewise emphasises that digital technologies play a vital role
+in improving cultural tourism by modernising heritage interpretation,
+increasing visitor engagement, and delivering innovative educational
+experiences~\cite{unwto2018}.
+
+\section{Why Existing Approaches Fall Short}
+The traditional answer to the guidance gap is the human-guided tour --- the
+campus orientation walk or the hired heritage guide. This model has four
+structural weaknesses:
+
+\begin{itemize}
+  \item \textbf{Passive and forgettable.} A guide speaks, the audience
+        listens, and little is retained.
+  \item \textbf{Non-scalable.} Every tour requires a human guide and cannot
+        run simultaneously for hundreds of newcomers.
+  \item \textbf{Zero data.} Institutions gain no insight into which
+        locations visitors actually engage with.
+  \item \textbf{One-and-done.} There is no replay value and no incentive to
+        revisit.
+\end{itemize}
+
+A number of digital alternatives exist in Nepal --- curated guide
+applications, archival heritage databases, self-guided GPS tour products,
+and QR-coded storyboards installed at sites --- but none combines real-time
+wayfinding with AR presentation, presence verification, and gamified
+engagement, and some depend on physical hardware installed and maintained at
+every location. A detailed comparison of these competitors is given in
+Chapter~\ref{ch:market-analysis}.
+
+\section{Consequence of Leaving It Unsolved}
+If the gap remains open, the cost is borne on all sides. Visitors leave
+heritage sites having seen stone and brick but not the stories that give
+them meaning; students finish orientation without ever genuinely learning
+their campus. Institutions continue to pay for guided tours that do not
+scale and produce no data, and they miss the engagement and educational
+outcomes that international tourism bodies explicitly identify as the value
+of digital interpretation. For Nepal in particular --- a country whose
+tourism sector depends heavily on its cultural heritage --- every
+undirected, unengaged visit is an opportunity lost.
+
+\section{Motivation}
+Two developments make this problem solvable now rather than at some future
+date. First, smartphones are ubiquitous among both tourists and students,
+and each one already carries the required hardware: a GPS receiver, a
+magnetometer, and a camera. Second, browser platform APIs for geolocation,
+device orientation, and camera access have matured to the point where
+location-based AR runs directly in a mobile web page, with no application
+store, no installation step, and no physical infrastructure at the site.
+A solution can therefore be deployed to any premises purely as software.
+
+The project deliberately starts with a campus as its proving ground. A
+campus is a controlled premises: routes are short, waypoints are known,
+users are reachable for feedback, and the complete loop --- geofenced
+navigation, AR media, gamification, and admin tooling --- can be validated
+end-to-end within the hackathon timeframe. Once proven at Orchid College,
+the same configurable platform can be pointed at heritage sites such as
+Pashupatinath, Boudhanath, or any of Nepal's ten UNESCO World Heritage
+properties without changes to the codebase.

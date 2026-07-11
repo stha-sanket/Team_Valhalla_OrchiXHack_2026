@@ -1,0 +1,72 @@
+\chapter{Introduction}
+\label{ch:introduction}
+% Port from: docs/01_overview.md
+
+\section{Background}
+Nepal's cultural landscape is dense with sites worth exploring: the country
+holds ten UNESCO World Heritage properties, four of them cultural sites within
+the Kathmandu Valley alone, and it welcomed 1.147 million international
+tourists in 2024. Yet the experience of actually visiting such a site --- or,
+at a smaller scale, of a newcomer finding their way around a university
+campus --- remains largely unassisted. Navigation applications reliably bring
+a visitor to the entrance of a monument or an institution, but the guidance
+ends at the gate. Inside, visitors depend on scarce physical tourism centres,
+sparse signage, or the availability of a human guide.
+
+At the same time, the technical preconditions for a software answer to this
+gap have matured. Modern smartphones ship with GPS receivers, magnetometers,
+and cameras as standard hardware, and web browsers now expose geolocation,
+device orientation, and camera access directly to web pages, making
+location-based Augmented Reality (AR) possible without installing a native
+application. \projectname{} was built on this premise for Orchid HackX 2026
+by Team Valhalla: a guided, gamified AR walk that begins where conventional
+navigation stops.
+
+\section{Project Overview}
+\projectname{} is a mobile-first, gamified AR navigation platform for
+educational campuses and heritage sites. A user opens the web application in
+a smartphone browser, selects a pre-mapped route, and is guided in real time
+by a live compass arrow together with a GPS distance readout to the next
+waypoint. When the user physically arrives at a checkpoint, the system
+detects their presence through geofencing and confirms the visit; only then
+is the location-specific media for that checkpoint unlocked --- a video
+testimonial, a historical image, or a narrative clip --- rendered anchored in
+the real world through the device camera using an AR overlay.
+
+Exploration is reinforced by a gamification layer. Users accumulate AR
+Points through quiz answers, milestone completions, and side quests; earn
+digital milestone badges for completing all milestone stops of a route;
+answer five-question multiple-choice knowledge quizzes unlocked after
+finishing a route; and compete on a community leaderboard. Points are
+redeemable for tangible campus perks through a reward store, and optional
+side quests reward detours that require a minimum five-minute on-site stay.
+
+The platform is administered without code. An admin dashboard provides a
+waypoint logger for defining route coordinates, waypoint types, and media; a
+place management interface for creating, updating, and deleting visiting
+places together with their cascaded route data; quiz management; user
+management; and aggregate statistics. Because each place records a visitor
+count as visits are confirmed, the system generates engagement analytics
+organically, with no additional instrumentation.
+
+\begin{figure}[H]\centering
+  \includegraphics[height=0.9\textheight,width=\textwidth,keepaspectratio]{user-flow}
+  \caption{End-to-end user journey: from registration to reward redemption.}\label{fig:userflow}
+\end{figure}
+
+\section{Scope}
+This build delivers a complete vertical slice of the platform as a web
+application, proven end-to-end on a single campus route at Orchid College in
+Kathmandu. In scope are: route selection and real-time compass navigation;
+geofence-verified checkpoint confirmation; AR media playback anchored in the
+camera view; the full gamification loop (AR Points, milestones, side quests,
+quizzes, badges, leaderboard, and reward redemption); and the complete admin
+tooling required to configure routes, media, quizzes, and users.
+
+Explicitly out of scope for this build are native mobile applications (the
+product is browser-based only), offline operation (an active network
+connection is required for the real-time proximity stream and media
+delivery), and multi-language support (the interface is English-only). The
+same infrastructure is designed to be pointed at other premises --- heritage
+sites such as Pashupatinath or Boudhanath --- but only the Orchid College
+route is demonstrated here.

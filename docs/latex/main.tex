@@ -1,0 +1,215 @@
+% =====================================================================
+%  ARadhana — Project Documentation Template
+%  Build (XeLaTeX — required for the ACM fonts):
+%    xelatex main && bibtex main && xelatex main && xelatex main
+%  Structure mirrors docs/*.md so content can be ported section by section.
+%  Every section file contains TODO markers — nothing is prefilled.
+% =====================================================================
+\documentclass[11pt,a4paper]{report}
+
+% ---------- Layout ----------
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+\usepackage{parskip}
+
+% ---------- Fonts: ACM's typefaces (Linux Libertine / Biolinum) ----------
+% Same fonts the acmart class (ACM COMPASS proceedings) uses. Shipped in
+% fonts/ so the template is self-contained — no TeX font packages needed.
+\usepackage{fontspec}
+\setmainfont{LinLibertine}[
+  Path           = fonts/,
+  Extension      = .otf,
+  UprightFont    = *_R,
+  BoldFont       = *_RB,
+  ItalicFont     = *_RI,
+  BoldItalicFont = *_RBI,
+]
+\setsansfont{LinBiolinum}[
+  Path        = fonts/,
+  Extension   = .otf,
+  UprightFont = *_R,
+  BoldFont    = *_RB,
+  ItalicFont  = *_RI,
+]
+\usepackage[english]{babel}
+
+% ---------- Colors: grayscale only — accents are black, no colorful paper ----------
+% The two accent names are kept so the rest of the template doesn't change;
+% both resolve to black.
+\usepackage{xcolor}
+\definecolor{orchidcrimson}{HTML}{000000}
+\definecolor{orchidnavy}{HTML}{000000}
+\definecolor{codegray}{HTML}{F2F2F2}
+\definecolor{inkmuted}{HTML}{555555}
+
+% ---------- Headings ----------
+\usepackage{titlesec}
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd{\chapter}{\clearpage}{\par\vspace{4ex}}{}{}
+\patchcmd{\chapter}{\cleardoublepage}{\par\vspace{4ex}}{}{}
+\makeatother
+% Headings in Biolinum (sans), like acmart's section heads.
+\titleformat{\chapter}[display]
+  {\normalfont\sffamily\huge\bfseries\color{orchidnavy}}
+  {\color{inkmuted}\sffamily\large Chapter \thechapter}{12pt}{\Huge}
+\titlespacing*{\chapter}{0pt}{0pt}{28pt}
+\titleformat*{\section}{\sffamily\Large\bfseries\color{orchidnavy}}
+\titleformat*{\subsection}{\sffamily\large\bfseries}
+
+% ---------- Header / footer ----------
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\color{inkmuted}ARadhana}
+\fancyhead[R]{\small\color{inkmuted}\leftmark}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+
+% ---------- Figures, tables, lists ----------
+\usepackage{graphicx}
+\usepackage{float}
+\graphicspath{{figures/}}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{enumitem}
+\setlist{nosep}
+\usepackage{caption}
+\captionsetup{font=small,labelfont={bf,color=orchidnavy}}
+
+% ---------- Code listings ----------
+\usepackage{listings}
+\lstdefinestyle{orchidcode}{
+  backgroundcolor=\color{codegray},
+  basicstyle=\ttfamily\small,
+  keywordstyle=\bfseries,
+  stringstyle=\color{inkmuted},
+  commentstyle=\color{inkmuted}\itshape,
+  numbers=left,
+  numberstyle=\tiny\color{inkmuted},
+  frame=single,
+  rulecolor=\color{inkmuted!40},
+  breaklines=true,
+  showstringspaces=false,
+  tabsize=2,
+  captionpos=b,
+}
+\lstset{style=orchidcode}
+% JSON has no built-in lexer — minimal definition for schema/API examples.
+\lstdefinelanguage{json}{
+  morestring=[b]",
+  morekeywords={true,false,null},
+  sensitive=true,
+}
+
+% ---------- Links (load last) ----------
+% Let long URLs (footnote citations) break at hyphens and more characters.
+\PassOptionsToPackage{hyphens}{url}
+\usepackage[hidelinks]{hyperref}
+\urlstyle{tt}
+\Urlmuskip=0mu plus 2mu
+\hypersetup{
+  pdftitle={ARadhana: A Geofence Based Augmented Reality Navigation and Game Platform for Heritage Exploration},
+  pdfauthor={Valhalla},
+}
+
+% ---------- Convenience macros ----------
+\newcommand{\projectname}{ARadhana}
+\newcommand{\todo}[1]{\textcolor{orchidcrimson}{\textbf{[TODO: #1]}}}
+\newcommand{\code}[1]{\texttt{#1}}
+% Usage: \apiroute{GET}{/api/visiting-places}
+\newcommand{\apiroute}[2]{\code{\textcolor{orchidnavy}{\textbf{#1}} #2}}
+
+% =====================================================================
+\begin{document}
+
+% ---------------- Title block (research-paper style, no cover page) ----------------
+\thispagestyle{plain} % no running header on the opening page
+\begin{center}
+  {\sffamily\LARGE\bfseries\color{orchidnavy}%
+    \projectname: A Geofence based Augmented Reality navigation
+    and Game Platform for Heritage Exploration\par}
+  \vspace{10pt}
+
+  % Authors — two per row so the long emails get room; all black, equal boxes.
+  \parbox[t]{0.45\textwidth}{\centering
+    \textbf{Sanket Shrestha}\\
+    {\small Sunway College Kathmandu}\\
+    {\small sanket\_24128469@sunway.edu.np}}%
+  \parbox[t]{0.45\textwidth}{\centering
+    \textbf{Prashant Adhikari}\\
+    {\small Sunway College Kathmandu}\\
+    {\small prashant\_adhikari\_a25@sunway.edu.np}}\\[10pt]
+  \parbox[t]{0.45\textwidth}{\centering
+    \textbf{Rishu Prajapati}\\
+    {\small Sunway College Kathmandu}\\
+    {\small rishu\_prajapati\_a25@sunway.edu.np}}\\[10pt]
+
+  {\small\color{inkmuted}Orchid HackX 2026 \,\textperiodcentered\, Team Valhalla \,\textperiodcentered\, 12 July, 2026}\\[4pt]
+  {\color{orchidcrimson}\rule{0.6\textwidth}{0.8pt}}
+\end{center}
+
+\vspace{1em}
+
+% ---------------- Executive summary (in place of an abstract) ----------------
+{\noindent\sffamily\large\bfseries\color{orchidnavy}Executive Summary}\\[6pt]
+Navigation for visitors in Nepal typically ends at the entrance of a heritage
+site or campus: beyond the gate there is no structured guidance, no contextual
+storytelling, and no way for an institution to know whether anyone actually
+explored what lies inside. \projectname{} closes that gap with a browser-based
+platform that turns a visit into a guided, verifiable, and rewarding
+experience. A visitor picks a mapped route and is steered from checkpoint to
+checkpoint by a live compass and an augmented-reality camera view; each
+checkpoint is protected by a geofence (a configurable radius, 10\,m by
+default) so location-specific videos and stories unlock only when the visitor
+is physically present and confirms arrival. Exploration is gamified end to
+end: milestones and side quests pay out private AR~Points, completing a route
+earns a permanent badge and unlocks a five-question quiz, points can be
+redeemed for tangible campus perks, and a community leaderboard ranks
+explorers by milestones, places, and side quests. Institutions manage
+everything without code --- routes, geofence radii, quizzes, users, and
+engagement analytics --- through a separate administrator dashboard. The
+complete system was built and field-tested at Orchid College in Kathmandu
+during Orchid HackX 2026: real users completed the seeded campus routes,
+earned badges and points, and appeared on the leaderboard, demonstrating a
+working vertical slice that can be pointed at any campus, museum, or heritage
+site with nothing more than an admin account and a set of coordinates.
+
+\vspace{0.5em}
+\noindent\textbf{Keywords:} augmented reality, geofencing, GPS navigation,
+gamification, cultural heritage, campus exploration, web AR, Nepal tourism
+
+\clearpage
+\tableofcontents
+\clearpage
+
+\input{sections/01-introduction}
+\input{sections/02-problem-statement}
+\input{sections/03-objectives}
+\input{sections/05-design-thinking}
+\input{sections/06-system-architecture}
+\input{sections/07-database-schemas}
+\input{sections/08-gamification-engine}
+\input{sections/09-ar-pathfinder}
+\input{sections/10-tech-stack}
+\input{sections/11-results}
+\input{sections/12-limitations-future-work}
+\input{sections/13-conclusion}
+
+\newpage
+% ---------------- References ----------------
+\renewcommand{\bibname}{References}
+\nocite{*} % list all .bib entries even before inline \cite marks are added
+\bibliographystyle{ieeetr}
+\bibliography{references}
+\addcontentsline{toc}{chapter}{References}
+
+\newpage
+
+% ---------------- Appendices ----------------
+\appendix
+\input{sections/appendix-b-schemas}
+\input{sections/appendix-c-code}
+
+\end{document}

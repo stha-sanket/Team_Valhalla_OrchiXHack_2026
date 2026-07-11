@@ -1,0 +1,20 @@
+sequenceDiagram
+  autonumber
+  participant B as Browser
+  participant S as Server
+  participant DB as MongoDB
+
+  B->>S: POST /api/user-progress (seed, idempotent)
+  B->>S: GET /api/ws/ticket
+  B->>S: WS connect ?ticket&visiting_place_id
+  loop every GPS fix
+    B->>S: { type: "location", lat, long }
+    S->>DB: place threshold + next unvisited waypoint
+    S-->>B: { type: "progress", distance, bearing,<br/>thresholdMeters, arrived }
+  end
+  Note over B: arrived = true -> confirmation prompt
+  B->>S: { type: "confirm_visit", route_id }
+  S->>S: re-validate last position vs radius
+  S->>DB: mark visited · award points (idempotent)<br/>log milestone · bump visitor_count
+  S-->>B: { type: "visit_result", confirmed }
+  S-->>B: { type: "progress", ... next waypoint }
