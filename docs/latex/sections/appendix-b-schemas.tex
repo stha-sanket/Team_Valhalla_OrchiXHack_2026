@@ -4,79 +4,95 @@
 
 \begingroup\small
 
-\section*{User}
-\begin{longtable}{@{}llp{0.44\textwidth}@{}}
-  \toprule \textbf{Field} & \textbf{Type} & \textbf{Notes} \\ \midrule
-  \code{name} & string & Display name \\
-  \code{email} & string & Unique; login identity \\
-  \code{password} & string & bcrypt hash \\
-  \code{role} & string & \code{user} (default) or \code{admin} \\
-  \code{milestones[]} & array & Permanent \code{\{name, earned\_at\}} log; survives resets \\
-  \code{avatar} & string & Image URL \\
-  \code{isVerified} / \code{isActive} & boolean & Email verified; soft-disable flag \\
-  \code{*Token(+Expiry)} & string/Date & Verify, reset, and refresh token state \\
-  \bottomrule
-\end{longtable}
+\begin{table}[H]\centering
+  \caption{User schema}
+  \begin{tabular}{@{}llp{0.44\textwidth}@{}}
+    \toprule \textbf{Field} & \textbf{Type} & \textbf{Notes} \\ \midrule
+    \code{name} & string & Display name \\
+    \code{email} & string & Unique; login identity \\
+    \code{password} & string & bcrypt hash \\
+    \code{role} & string & \code{user} (default) or \code{admin} \\
+    \code{milestones[]} & array & Permanent \code{\{name, earned\_at\}} log; survives resets \\
+    \code{avatar} & string & Image URL \\
+    \code{isVerified} / \code{isActive} & boolean & Email verified; soft-disable flag \\
+    \code{*Token(+Expiry)} & string/Date & Verify, reset, and refresh token state \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
-\section*{VisitingPlace}
-\begin{longtable}{@{}llp{0.44\textwidth}@{}}
-  \toprule \textbf{Field} & \textbf{Type} & \textbf{Notes} \\ \midrule
-  \code{name} / \code{description} & string & Card display \\
-  \code{lat} / \code{long} & string & Central coordinate \\
-  \code{badge} & string & Badge image URL awarded on completion \\
-  \code{visit\_threshold\_meters} & number & Geofence radius; required, default 10 \\
-  \code{visitor\_count} & number & Unique completers; bumped once per first completion \\
-  \bottomrule
-\end{longtable}
+\begin{table}[H]\centering
+  \caption{VisitingPlace schema}
+  \begin{tabular}{@{}llp{0.44\textwidth}@{}}
+    \toprule \textbf{Field} & \textbf{Type} & \textbf{Notes} \\ \midrule
+    \code{name} / \code{description} & string & Card display \\
+    \code{lat} / \code{long} & string & Central coordinate \\
+    \code{badge} & string & Badge image URL awarded on completion \\
+    \code{visit\_threshold\_meters} & number & Geofence radius; required, default 10 \\
+    \code{visitor\_count} & number & Unique completers; bumped once per first completion \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
-\section*{VisitingRoutes}
-\begin{longtable}{@{}llp{0.44\textwidth}@{}}
-  \toprule \textbf{Field} & \textbf{Type} & \textbf{Notes} \\ \midrule
-  \code{visiting\_place\_id} & string & Owning place \\
-  \code{name} / \code{description} & string & HUD and arrival-card text \\
-  \code{type} & enum & \code{start}, \code{node}, \code{milestone}, \code{side\_quest}, \code{end} \\
-  \code{coordinates.\{lat,long\}} & string & Waypoint GPS position \\
-  \code{media} & string & Image or video URL \\
-  \code{index} & number & 0-based route ordering \\
-  \bottomrule
-\end{longtable}
+\begin{table}[H]\centering
+  \caption{VisitingRoutes schema}
+  \begin{tabular}{@{}llp{0.44\textwidth}@{}}
+    \toprule \textbf{Field} & \textbf{Type} & \textbf{Notes} \\ \midrule
+    \code{visiting\_place\_id} & string & Owning place \\
+    \code{name} / \code{description} & string & HUD and arrival-card text \\
+    \code{type} & enum & \code{start}, \code{node}, \code{milestone}, \code{side\_quest}, \code{end} \\
+    \code{coordinates.\{lat,long\}} & string & Waypoint GPS position \\
+    \code{media} & string & Image or video URL \\
+    \code{index} & number & 0-based route ordering \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
-\section*{UserProgress}
-\begin{longtable}{@{}llp{0.44\textwidth}@{}}
-  \toprule \textbf{Field} & \textbf{Type} & \textbf{Notes} \\ \midrule
-  \code{user\_id} / \code{visiting\_place\_id} & string & One record per pair \\
-  \code{route\_progress[]} & array & \code{\{route\_id, route\_index, visited\}} per waypoint \\
-  \bottomrule
-\end{longtable}
+\begin{table}[H]\centering
+  \caption{UserProgress schema}
+  \begin{tabular}{@{}llp{0.44\textwidth}@{}}
+    \toprule \textbf{Field} & \textbf{Type} & \textbf{Notes} \\ \midrule
+    \code{user\_id} / \code{visiting\_place\_id} & string & One record per pair \\
+    \code{route\_progress[]} & array & \code{\{route\_id, route\_index, visited\}} per waypoint \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
-\section*{ArPoints}
-\begin{longtable}{@{}llp{0.44\textwidth}@{}}
-  \toprule \textbf{Field} & \textbf{Type} & \textbf{Notes} \\ \midrule
-  \code{user\_id} & string & Unique; one ledger per user \\
-  \code{total} & number & Running balance (O(1) reads) \\
-  \code{entries[].source} & enum & \code{quiz}, \code{side\_quest}, \code{milestone}, \code{place\_complete}, \code{redeem} \\
-  \code{entries[].ref\_id} & string & Idempotency key with source \\
-  \code{entries[].points} & number & Negative for redemptions \\
-  \code{entries[].label} / \code{earned\_at} & string & Display text; ISO timestamp \\
-  \bottomrule
-\end{longtable}
+\begin{table}[H]\centering
+  \caption{ArPoints schema}
+  \begin{tabular}{@{}llp{0.44\textwidth}@{}}
+    \toprule \textbf{Field} & \textbf{Type} & \textbf{Notes} \\ \midrule
+    \code{user\_id} & string & Unique; one ledger per user \\
+    \code{total} & number & Running balance (O(1) reads) \\
+    \code{entries[].source} & enum & \code{quiz}, \code{side\_quest}, \code{milestone}, \code{place\_complete}, \code{redeem} \\
+    \code{entries[].ref\_id} & string & Idempotency key with source \\
+    \code{entries[].points} & number & Negative for redemptions \\
+    \code{entries[].label} / \code{earned\_at} & string & Display text; ISO timestamp \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
-\section*{Quiz and QuizAttempt}
-\begin{longtable}{@{}llp{0.44\textwidth}@{}}
-  \toprule \textbf{Field} & \textbf{Type} & \textbf{Notes} \\ \midrule
-  \code{Quiz.visiting\_place\_id} & string & Unique --- one quiz per place \\
-  \code{Quiz.questions[]} & array & \code{\{question, options[], correct\_index\}}; exactly five; answers never sent to users \\
-  \code{QuizAttempt.user\_id} / \code{quiz\_id} & string & One permanent attempt per pair \\
-  \code{QuizAttempt.answers[]} & number[] & Picked option per question (enables answer review) \\
-  \code{QuizAttempt.correct\_count} / \code{points} & number & Score and award \\
-  \bottomrule
-\end{longtable}
+\begin{table}[H]\centering
+  \caption{Quiz and QuizAttempt schema}
+  \begin{tabular}{@{}llp{0.44\textwidth}@{}}
+    \toprule \textbf{Field} & \textbf{Type} & \textbf{Notes} \\ \midrule
+    \code{Quiz.visiting\_place\_id} & string & Unique --- one quiz per place \\
+    \code{Quiz.questions[]} & array & \code{\{question, options[], correct\_index\}}; exactly five; answers never sent to users \\
+    \code{QuizAttempt.user\_id} / \code{quiz\_id} & string & One permanent attempt per pair \\
+    \code{QuizAttempt.answers[]} & number[] & Picked option per question (enables answer review) \\
+    \code{QuizAttempt.correct\_count} / \code{points} & number & Score and award \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
-\section*{Admin, Session, Role}
-\code{Admin} mirrors \code{User} (name, email, bcrypt password, activity
-flags) in a separate collection with a \code{permissions[]} array;
-\code{Session} records \code{\{userId, token, ip, userAgent, expiresAt,
-isActive\}} for multi-device management; \code{Role} defines named
-permission sets \code{\{name, description, permissions[]\}}.
+\begin{table}[H]\centering
+  \caption{Admin, Session, Role schema}
+  \begin{tabular}{@{}llp{0.44\textwidth}@{}}
+    \toprule \textbf{Collection} & \textbf{Type} & \textbf{Description} \\ \midrule
+    \code{Admin} & record & Mirrors \code{User} (name, email, password, flags) with a \code{permissions[]} array. \\
+    \code{Session} & record & Records \code{\{userId, token, ip, userAgent, expiresAt, isActive\}} for multi-device management. \\
+    \code{Role} & record & Defines named permission sets \code{\{name, description, permissions[]\}}. \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 \endgroup
