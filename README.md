@@ -54,6 +54,7 @@ Two heritage routes are seeded out of the box: **Orchid International College** 
 **Server** (`server/`) — built on [`express-file-cluster`](#acknowledgements): every file under `src/api/**` is a route (`src/api/visiting-places/[id].ts` → `GET/PATCH/DELETE /visiting-places/:id`), `ignite()` clusters the process across CPU cores, and background work (transactional email) runs as a BullMQ task instead of blocking the request. Auth is HTTP-only cookie + JWT (`jose`), with optional TOTP 2FA and role-based access (`user` / `admin`) enforced per route.
 
 Key domains:
+
 - **Auth** — register/login/refresh/logout, forgot/reset password, email verification, 2FA setup/verify/disable.
 - **Visiting places & routes** — CRUD for heritage sites and their ordered waypoint sequences (`VisitingPlace`, `VisitingRoutes`).
 - **Pathfinder** — a WebSocket channel (`server/src/ws/pathfinder.ts`) authenticated by a short-lived ticket (`/api/ws/ticket`), streaming proximity evaluation (`lib/proximity.ts`, haversine distance against each place's geofence) and confirming visits in real time.
@@ -102,8 +103,8 @@ npm run seed:badge       # sample badge/reward data
 Production build/start:
 
 ```bash
-npm run build            # efc build prod
-npm start                 # efc start prod
+efc build prod
+efc start prod
 ```
 
 ### Client
@@ -131,37 +132,36 @@ The client expects the server's REST API at `VITE_API_URL` (e.g. `http://localho
 1. Fork/branch off `main`, keep changes scoped to one feature or fix per branch.
 2. Follow the existing route/model conventions in `server/src/api` and `server/src/model` — a new endpoint is a new file, not an addition to a router.
 3. Run `npm run build` (server) and `npm run lint` (client) before opening a PR.
-4. Describe *why* a change is needed in the PR description, not just what changed.
+4. Describe _why_ a change is needed in the PR description, not just what changed.
 
 ## Packages
 
 Core dependencies this project stands on:
 
-| Package | Role |
-|---|---|
-| [`express-file-cluster`](https://www.npmjs.com/package/express-file-cluster) | Backend framework — file-based routing, clustering, task queue |
-| [`mongoose`](https://www.npmjs.com/package/mongoose) | MongoDB models |
-| [`bullmq`](https://www.npmjs.com/package/bullmq) | Redis-backed background task queue (email) |
-| [`jose`](https://www.npmjs.com/package/jose) | JWT signing/verification (auth + WS tickets) |
-| [`ws`](https://www.npmjs.com/package/ws) | WebSocket server for live pathfinding |
-| [`nodemailer`](https://www.npmjs.com/package/nodemailer) | Transactional email |
-| [`react`](https://www.npmjs.com/package/react) / [`react-router-dom`](https://www.npmjs.com/package/react-router-dom) | Client SPA + routing |
-| [`@reduxjs/toolkit`](https://www.npmjs.com/package/@reduxjs/toolkit) | Redux Toolkit Query for API/WS state |
-| [`tailwindcss`](https://www.npmjs.com/package/tailwindcss) | Styling |
-| [A-Frame](https://aframe.io/) / [AR.js](https://github.com/AR-js-org/AR.js) | WebXR AR camera scene |
+| Package                                                                                                               | Role                                                           |
+| --------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| [`express-file-cluster`](https://efc.prashantadhikari7.com.np)                                                        | Backend framework — file-based routing, clustering, task queue |
+| [`mongoose`](https://www.npmjs.com/package/mongoose)                                                                  | MongoDB models                                                 |
+| [`bullmq`](https://www.npmjs.com/package/bullmq)                                                                      | Redis-backed background task queue (email)                     |
+| [`jose`](https://www.npmjs.com/package/jose)                                                                          | JWT signing/verification (auth + WS tickets)                   |
+| [`ws`](https://www.npmjs.com/package/ws)                                                                              | WebSocket server for live pathfinding                          |
+| [`nodemailer`](https://www.npmjs.com/package/nodemailer)                                                              | Transactional email                                            |
+| [`react`](https://www.npmjs.com/package/react) / [`react-router-dom`](https://www.npmjs.com/package/react-router-dom) | Client SPA + routing                                           |
+| [`@reduxjs/toolkit`](https://www.npmjs.com/package/@reduxjs/toolkit)                                                  | Redux Toolkit Query for API/WS state                           |
+| [`tailwindcss`](https://www.npmjs.com/package/tailwindcss)                                                            | Styling                                                        |
+| [A-Frame](https://aframe.io/) / [AR.js](https://github.com/AR-js-org/AR.js)                                           | WebXR AR camera scene                                          |
 
 ## Acknowledgements
 
-This project's entire backend runs on **[express-file-cluster (EFC)](https://www.npmjs.com/package/express-file-cluster)** — an opinionated Express framework where the file tree *is* the route tree, clustering across CPU cores and a BullMQ task subsystem come from a single `ignite()` call. EFC's routing, auth (`requireAuth`, HTTP-only cookie/JWT strategies), and `defineModel` schema layer are what let this hackathon's backend get built as fast as it did. Thanks to the EFC maintainers for the framework and its documentation.
+This project's entire backend runs on **[express-file-cluster (EFC)](https://www.npmjs.com/package/express-file-cluster)** — an opinionated Express framework where the file tree _is_ the route tree, clustering across CPU cores and a BullMQ task subsystem come from a single `ignite()` call. EFC's routing, auth (`requireAuth`, HTTP-only cookie/JWT strategies), and `defineModel` schema layer are what let this hackathon's backend get built as fast as it did. Thanks to the EFC maintainers for the framework and its documentation.
 
 ## Team — Team Valhalla
 
-| Contributor |
-|---|
-| Prashant Adhikari |
-| [stha-sanket](https://github.com/stha-sanket) |
-| Reesuu |
-| YatriAR Dev |
+| Contributor                                       |
+| ------------------------------------------------- |
+| [Prashant Adhikari](https://github.com/pr4shxnt)  |
+| [Sanket Shrestha](https://github.com/stha-sanket) |
+| [Rishu Prajapati](https://github.com/ree-suuu)    |
 
 ## License
 
