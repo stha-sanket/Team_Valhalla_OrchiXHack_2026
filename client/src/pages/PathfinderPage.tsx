@@ -132,9 +132,12 @@ const PathfinderPage = () => {
   const orientationHandlerRef = useRef<((e: DeviceOrientationEvent) => void) | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const arVideoEntityRef = useRef<HTMLElement | null>(null);
-  // Interactive 3D model viewer — a self-contained a-frame scene, independent
-  // of the location-based AR camera (the model is hand-held, not world-anchored).
-  const model3dContainerRef = useRef<HTMLDivElement | null>(null);
+  // 3D model rendered inside the live location-AR camera session — a
+  // transparent hit-target layer captures drag/pinch to rotate/scale the
+  // model that's anchored into the real <a-scene> (see the effect below).
+  const model3dInteractionRef = useRef<HTMLDivElement | null>(null);
+  const arModelEntityRef = useRef<HTMLElement | null>(null);
+  const arModelGroundRef = useRef<HTMLElement | null>(null);
   const sideQuestIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Waypoints whose video already auto-started — arrival messages keep coming
   // while standing in range, and the video must not restart on each one.
@@ -298,124 +301,173 @@ const PathfinderPage = () => {
   }, [mediaOverlay, arReady]);
 
   // Nodes may carry an interactive 3D model — shown once on arrival, alongside
-  // its description. Independent of the video flow above and of the location-AR
-  // camera: the model isn't anchored in world space, it's a hand-held object.
+  // its description. Independent of the video flow above; only fires when the
+  // location-AR camera session is actually running, since the model renders
+  // into that same <a-scene> rather than any separate/third-party viewer.
   useEffect(() => {
     const wp = progressMsg?.nextWaypoint;
-    if (!progressMsg?.arrived || !wp) return;
+    if (!progressMsg?.arrived || !wp || !arReady) return;
     if (wp.type === 'node' && wp.model3d && autoPlayedIdRef.current !== wp.id) {
       autoPlayedIdRef.current = wp.id;
       setMediaOverlay({ kind: 'model3d', waypoint: wp });
     }
-  }, [progressMsg]);
+  }, [progressMsg, arReady]);
 
-  // Mount a small self-contained a-frame scene (not the location-AR one) to view
-  // the model, with manual drag-to-rotate and pinch/wheel-to-zoom — deliberately
-  // NOT pinned at a fixed distance from the camera like the AR video plane, so it
-  // behaves like a handheld object instead of being stuck 3 m out in the world.
+  // Anchor the 3D model into the SAME <a-scene> the AR video uses — the live
+  // camera session, no third-party AR viewer. Unlike the video plane, which
+  // re-glues its position to the camera every frame (see above), this model's
+  // position is computed ONCE at spawn and then frozen: it stays exactly where
+  // it first appeared, like a real object placed on the ground, so walking
+  // toward/around/past it works instead of it tagging along 3-4 m ahead of you.
+  // Only rotation (drag) and scale (pinch/scroll) stay interactive on top of that.
   useEffect(() => {
-    if (mediaOverlay?.kind !== 'model3d') return;
-    const AFRAME = (window as any).AFRAME;
-    const container = model3dContainerRef.current;
-    if (!AFRAME || !container) return;
+    if (mediaOverlay?.kind !== 'model3d' || !arReady) return;
+    const scene = document.querySelector('a-scene') as (HTMLElement & { hasLoaded?: boolean }) | null;
+    const cameraEl = document.getElementById('camera') as (HTMLElement & { object3D?: any }) | null;
+    const hitTarget = model3dInteractionRef.current;
+    if (!scene || !cameraEl || !hitTarget) return;
 
-    const scene = document.createElement('a-scene');
-    scene.setAttribute('embedded', '');
-    scene.setAttribute('vr-mode-ui', 'enabled: false');
-    scene.setAttribute('loading-screen', 'enabled: false');
-    scene.setAttribute('renderer', 'alpha: true');
-    scene.style.width = '100%';
-    scene.style.height = '100%';
+    let entity: (HTMLElement & { object3D?: any }) | null = null;
+    // Authors export these at wildly different native scales (some in meters,
+    // some effectively in centimeters or arbitrary units) — a fixed scale factor
+    // either leaves tiny models invisible or blows huge ones up past the camera.
+    // Instead, measure the loaded mesh's real bounding box and fit it to a
+    // sensible on-screen size, whatever units the source file used.
+    const TARGET_SIZE_METERS = 1.2;
+    // baseScale is the auto-fit factor computed once from the mesh's real
+    // bounding box; zoomFactor is the user's pinch/scroll adjustment on top of
+    // that baseline — kept separate so the zoom clamp means the same thing
+    // ("0.4x-3x the size we picked") no matter how tiny/huge the source units are.
+    let baseScale = 1;
+    let zoomFactor = 1;
+    // Approximate distance from the phone's held height down to the ground —
+    // there's no real floor detection here (AR.js is GPS/compass-only, not
+    // SLAM), so this just guesses a believable "on the ground" height.
+    const GROUND_DROP = 1.4;
 
-    const entity = document.createElement('a-entity') as HTMLElement & { object3D?: any };
-    entity.setAttribute('gltf-model', `url(${mediaOverlay.waypoint.model3d})`);
-    scene.appendChild(entity);
+    const spawn = () => {
+      const THREE = (window as any).THREE;
+      const camObj = cameraEl.object3D;
+      if (!THREE || !camObj) return;
 
-    // Plain a-entity (no look-controls/wasd-controls) — the camera stays fixed;
-    // all interaction below rotates/zooms the model itself instead.
-    const camera = document.createElement('a-entity');
-    camera.setAttribute('camera', '');
-    camera.setAttribute('position', '0 0 0');
-    scene.appendChild(camera);
+      const camPos = new THREE.Vector3();
+      camObj.getWorldPosition(camPos);
+      const quat = new THREE.Quaternion();
+      camObj.getWorldQuaternion(quat);
+      const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(quat);
+      dir.y = 0;
+      if (dir.lengthSq() < 0.0001) dir.set(0, 0, -1);
+      dir.normalize();
+      const pos = camPos.clone().add(dir.multiplyScalar(3)); // fixed spot, computed once
+      const groundY = pos.y - GROUND_DROP;
 
-    container.appendChild(scene);
+      // A flat circular backdrop under the model so it reads as standing on
+      // something instead of floating at eye height.
+      const ground = document.createElement('a-circle');
+      ground.setAttribute('radius', '0.7');
+      ground.setAttribute('rotation', '-90 0 0');
+      ground.setAttribute('position', `${pos.x} ${groundY} ${pos.z}`);
+      ground.setAttribute('material', 'color: #111; opacity: 0.4; shader: flat; side: double');
+      scene.appendChild(ground);
+      arModelGroundRef.current = ground;
 
-    let rotX = 0;
-    let rotY = 0;
-    let distance = 3;
+      const el = document.createElement('a-entity') as HTMLElement & { object3D?: any };
+      el.setAttribute('gltf-model', `url(${mediaOverlay.waypoint.model3d})`);
+      el.setAttribute('position', `${pos.x} ${groundY} ${pos.z}`);
+      el.addEventListener('model-loaded', () => {
+        const obj = el.object3D;
+        if (obj) {
+          // Yaw-only face-the-camera: camPos sits at eye height, well above the
+          // model's ground-level position, so a plain lookAt(camPos) would also
+          // pitch the model upward toward that height, tilting it off-upright.
+          // Targeting a point at the model's own height keeps it standing straight.
+          obj.lookAt(camPos.x, obj.position.y, camPos.z);
+
+          // Measure the mesh at its native (unscaled) size, then fit it to
+          // TARGET_SIZE_METERS on its longest axis.
+          const box = new THREE.Box3().setFromObject(obj);
+          const size = box.getSize(new THREE.Vector3());
+          const maxDim = Math.max(size.x, size.y, size.z);
+          baseScale = maxDim > 0 ? TARGET_SIZE_METERS / maxDim : 1;
+          const s = baseScale * zoomFactor;
+          obj.scale.set(s, s, s);
+        }
+      });
+      scene.appendChild(el);
+      entity = el;
+      arModelEntityRef.current = el;
+    };
+
+    if (scene.hasLoaded) spawn();
+    else scene.addEventListener('loaded', spawn, { once: true });
+
     let dragging = false;
     let lastX = 0;
-    let lastY = 0;
     let pinchStartDist: number | null = null;
-    let pinchStartDistance = distance;
-
-    const applyTransform = () => {
-      const obj = entity.object3D;
-      if (!obj) return;
-      obj.rotation.set(rotX, rotY, 0);
-      obj.position.set(0, 0, -distance);
-    };
-    entity.addEventListener('model-loaded', applyTransform);
-    applyTransform();
+    let pinchStartZoom = zoomFactor;
 
     const onPointerDown = (e: PointerEvent) => {
       dragging = true;
       lastX = e.clientX;
-      lastY = e.clientY;
     };
     const onPointerMove = (e: PointerEvent) => {
-      if (!dragging) return;
+      if (!dragging || !entity?.object3D) return;
       const dx = e.clientX - lastX;
-      const dy = e.clientY - lastY;
       lastX = e.clientX;
-      lastY = e.clientY;
-      rotY += dx * 0.01;
-      rotX = Math.max(-1.2, Math.min(1.2, rotX + dy * 0.01));
-      applyTransform();
+      // Turntable spin only — left/right drag rotates about the vertical axis,
+      // layered on top of the initial lookAt orientation. Up/down drag does
+      // nothing (no tilt), since the model sits fixed on its ground plane.
+      entity.object3D.rotateY(dx * 0.01);
     };
     const onPointerUp = () => {
       dragging = false;
     };
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      distance = Math.max(1.2, Math.min(8, distance + e.deltaY * 0.005));
-      applyTransform();
+      if (!entity?.object3D) return;
+      zoomFactor = Math.max(0.4, Math.min(3, zoomFactor - e.deltaY * 0.001));
+      const s = baseScale * zoomFactor;
+      entity.object3D.scale.set(s, s, s);
     };
     const onTouchMove = (e: TouchEvent) => {
-      if (e.touches.length !== 2) return;
+      if (e.touches.length !== 2 || !entity?.object3D) return;
       e.preventDefault();
       const dx = e.touches[0].clientX - e.touches[1].clientX;
       const dy = e.touches[0].clientY - e.touches[1].clientY;
       const dist = Math.hypot(dx, dy);
       if (pinchStartDist == null) {
         pinchStartDist = dist;
-        pinchStartDistance = distance;
+        pinchStartZoom = zoomFactor;
       } else {
-        distance = Math.max(1.2, Math.min(8, pinchStartDistance * (pinchStartDist / dist)));
-        applyTransform();
+        zoomFactor = Math.max(0.4, Math.min(3, pinchStartZoom * (dist / pinchStartDist)));
+        const s = baseScale * zoomFactor;
+        entity.object3D.scale.set(s, s, s);
       }
     };
     const onTouchEnd = (e: TouchEvent) => {
       if (e.touches.length < 2) pinchStartDist = null;
     };
 
-    container.addEventListener('pointerdown', onPointerDown);
+    hitTarget.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
-    container.addEventListener('wheel', onWheel, { passive: false });
-    container.addEventListener('touchmove', onTouchMove, { passive: false });
-    container.addEventListener('touchend', onTouchEnd);
+    hitTarget.addEventListener('wheel', onWheel, { passive: false });
+    hitTarget.addEventListener('touchmove', onTouchMove, { passive: false });
+    hitTarget.addEventListener('touchend', onTouchEnd);
 
     return () => {
-      container.removeEventListener('pointerdown', onPointerDown);
+      hitTarget.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
-      container.removeEventListener('wheel', onWheel);
-      container.removeEventListener('touchmove', onTouchMove);
-      container.removeEventListener('touchend', onTouchEnd);
-      scene.remove();
+      hitTarget.removeEventListener('wheel', onWheel);
+      hitTarget.removeEventListener('touchmove', onTouchMove);
+      hitTarget.removeEventListener('touchend', onTouchEnd);
+      arModelEntityRef.current?.remove();
+      arModelEntityRef.current = null;
+      arModelGroundRef.current?.remove();
+      arModelGroundRef.current = null;
     };
-  }, [mediaOverlay]);
+  }, [mediaOverlay, arReady]);
 
   const applyHeading = (rawHeading: number) => {
     if (rawHeading == null || Number.isNaN(rawHeading)) return;
@@ -1213,25 +1265,20 @@ const PathfinderPage = () => {
         </div>
       )}
 
-      {/* Interactive 3D model — nodes that carry a .glb model show it in a
-          hand-held viewer (drag to rotate, pinch/scroll to zoom) alongside
-          its description, instead of the plain arrival prompt. */}
+      {/* Interactive 3D model — nodes that carry a .glb model render it directly
+          into the live AR camera session (see the anchor effect above), with its
+          description alongside. It's placed once and stays put: look around or
+          walk toward it like a real object; drag to rotate, pinch/scroll to resize. */}
       {mediaOverlay?.kind === 'model3d' && (
         <div className="absolute inset-0 z-40">
-          {(window as any).AFRAME ? (
-            <div ref={model3dContainerRef} className="absolute inset-0 bg-black/95 touch-none" />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/95 px-6">
-              <p className="text-sm text-stone-400 text-center">3D preview needs camera access to load — tap continue below.</p>
-            </div>
-          )}
+          <div ref={model3dInteractionRef} className="absolute inset-0 touch-none" />
           <div className="absolute bottom-0 left-0 right-0 p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none">
             <p className="text-[10px] font-bold uppercase tracking-widest text-crimson-400 mb-1">
               {mediaOverlay.waypoint.type.replace('_', ' ')}
             </p>
             <h3 className="text-lg font-bold text-white mb-1">{mediaOverlay.waypoint.name}</h3>
             <p className="text-sm text-stone-300 mb-1">{mediaOverlay.waypoint.description}</p>
-            <p className="text-[11px] text-stone-400 mb-3">Drag to rotate · pinch or scroll to zoom</p>
+            <p className="text-[11px] text-stone-400 mb-3">Drag left/right to spin · pinch or scroll to resize</p>
             <button
               type="button"
               onClick={() => {
