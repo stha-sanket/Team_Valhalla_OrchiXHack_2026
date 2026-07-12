@@ -1,6 +1,6 @@
-import { issueToken } from 'express-file-cluster/auth';
 import type { Request, Response } from 'express';
 import crypto from 'node:crypto';
+import { issueAccessCookie, setRefreshCookie } from '../../lib/authCookies.js';
 import { User } from '../../model/User.js';
 import { Admin } from '../../model/Admin.js';
 import type { RouteMeta } from 'express-file-cluster';
@@ -31,13 +31,8 @@ export const POST = async (req: Request, res: Response) => {
   if (user) await User.update(user.id, { refreshToken: newRefreshToken, refreshTokenExpiry });
   else if (admin) await Admin.update(admin.id, { refreshToken: newRefreshToken, refreshTokenExpiry });
 
-  res.cookie('efc_refresh_token', newRefreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    maxAge: REFRESH_TOKEN_TTL_MS,
-  });
+  setRefreshCookie(res, newRefreshToken, REFRESH_TOKEN_TTL_MS);
 
-  await issueToken(res, { id: account.id, role: account.role, email: account.email });
+  await issueAccessCookie(res, { id: account.id, role: account.role, email: account.email });
   res.json({ message: 'Token refreshed' });
 };

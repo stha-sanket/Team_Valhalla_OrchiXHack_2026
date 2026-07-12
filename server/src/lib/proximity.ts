@@ -65,6 +65,7 @@ export interface ProximityResult {
     description: string;
     type: string;
     media?: string;
+    video?: string;
     index: number;
     coordinates: { lat: string; long: string };
   } | null;
@@ -112,6 +113,7 @@ export async function evaluateProximity(params: {
       description: route.description,
       type: route.type,
       media: route.media,
+      video: route.video,
       index: route.index,
       coordinates: route.coordinates,
     },

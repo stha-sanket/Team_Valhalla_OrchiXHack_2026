@@ -1,0 +1,45 @@
+type: Start
+Name: main gate: 27.712387, 85.347429
+media: https://res.cloudinary.com/drddkl4on/image/upload/v1783792013/ae14b2da-1d98-4ca5-a99d-3fd77dabf555.png
+
+
+
+type : Milestone
+Name: Religious virtue: place your shoes on the shoe 
+27.711337, 85.347215 
+media: https://res.cloudinary.com/drddkl4on/image/upload/v1783792379/6f8d0e7d-7275-4649-add3-29727c7e52b8.png
+
+
+
+Gate no.3: 27.710980, 85.347078 
+Turn left for the yellow gate no. 3.
+media : https://res.cloudinary.com/p8hr2mve/image/upload/v1783756022/main_gate_vmsrok.jpg
+type : milestone
+
+
+Nepal sbi bank: 27.710789, 85.347802 
+St from the main gate and right side the 1st white building.
+https://res.cloudinary.com/p8hr2mve/image/upload/v1783759387/sbi_bank_z67e1t.jpg
+type: Node
+
+Main pashupatinath gate: 27.710706, 85.348261 
+St from sbi bank until u reach a yellow coloured gate having the sculpture of shiva.
+Media: https://res.cloudinary.com/p8hr2mve/image/upload/v1783759932/pashupati_temple_gate_d2bdga.jpg
+type : milestone
+video: https://res.cloudinary.com/drddkl4on/video/upload/v1783793419/pashupati_vrxqgw.mp4
+
+Main temple:  
+media: https://res.cloudinary.com/p8hr2mve/image/upload/v1783762084/main_temple_ir9w88.jpg
+You are not allowed to take the phone here. 
+27.710341, 85.349026
+type: end
+
+
+
+
+
+
+
+visiting place name: Pashupatinath Temple 
+badge: https://res.cloudinary.com/drddkl4on/image/upload/v1783793888/badge_avgnui.png
+27.710341, 85.349026

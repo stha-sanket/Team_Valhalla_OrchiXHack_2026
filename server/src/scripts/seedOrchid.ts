@@ -45,7 +45,8 @@ const POINTS = [
     type: 'milestone',
     index: 2,
     coordinates: { lat: '27.701960', long: '85.347353' },
-    media: 'https://res.cloudinary.com/drddkl4on/video/upload/v1783706749/random_d4qr3i.mp4',
+    // TODO: add a photo of the parking area in `media`.
+    video: 'https://res.cloudinary.com/drddkl4on/video/upload/v1783706749/random_d4qr3i.mp4',
     description: 'Watch the story of the Orchid parking area.',
   },
   {
@@ -61,7 +62,8 @@ const POINTS = [
     type: 'side_quest',
     index: 4,
     coordinates: { lat: '27.702062', long: '85.347112' },
-    media: 'https://res.cloudinary.com/drddkl4on/video/upload/v1783706985/random2_la9nih.mp4',
+    // TODO: add a photo of Bishwajit Medical Hall in `media`.
+    video: 'https://res.cloudinary.com/drddkl4on/video/upload/v1783706985/random2_la9nih.mp4',
     description: 'Optional side quest — spend at least 5 minutes at Bishwajit Medical Hall.',
   },
   {
@@ -77,7 +79,8 @@ const POINTS = [
     type: 'milestone',
     index: 6,
     coordinates: { lat: '27.702317', long: '85.346659' },
-    media: 'https://res.cloudinary.com/drddkl4on/video/upload/v1783707578/Abinash_Adhikari____Student_s_Testimonial_2____University_Topper_2080____TU_Top____acn2qz.mp4',
+    // TODO: add a photo of Orchid International College in `media`.
+    video: 'https://res.cloudinary.com/drddkl4on/video/upload/v1783707578/Abinash_Adhikari____Student_s_Testimonial_2____University_Topper_2080____TU_Top____acn2qz.mp4',
     description: 'Watch a student testimonial from Orchid International College.',
   },
   {

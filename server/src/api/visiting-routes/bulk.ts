@@ -11,7 +11,7 @@ export const meta: RouteMeta = {
       body: {
         visiting_place_id: '64f0...',
         points: [
-          { name: 'Courtyard door', description: 'Entrance', type: 'start', coordinates: { lat: '27.7110', long: '85.3243' }, index: 0 },
+          { name: 'Courtyard door', description: 'Entrance', type: 'start', coordinates: { lat: '27.7110', long: '85.3243' }, media: 'https://example.com/photo.png', video: 'https://example.com/story.mp4', model3d: 'https://example.com/model.glb', index: 0 },
         ],
       },
     },

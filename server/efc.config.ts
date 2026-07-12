@@ -8,6 +8,7 @@ const config: EFCConfig = {
       "http://localhost:5173",
       "http://127.0.0.1:5173",
       "https://q4n8mbr4-5173.inc1.devtunnels.ms",
+      "https://d0b2-103-180-241-10.ngrok-free.app",
     ],
     credentials: true,
   },

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useGetMeQuery, useLogoutMutation } from '../store/api/authApi';
 import Dock from './Dock';
-import { HomeIcon, CompassIcon, UserIcon, UsersIcon, ChartIcon, GiftIcon, LogoutIcon, MapPinIcon } from './icons';
+import { Home, Compass, User, Users, LayoutDashboard, Gift, LogOut, MapPin } from 'lucide-react';
 
 const AppLayout = () => {
   const { data } = useGetMeQuery();
@@ -20,16 +20,16 @@ const AppLayout = () => {
   const isAdmin = data?.user.role === 'admin';
   const navItems = isAdmin
     ? [
-        { icon: <ChartIcon />, label: 'Dashboard', path: '/admin' },
-        { icon: <UsersIcon />, label: 'Users', path: '/admin/users' },
-        { icon: <MapPinIcon />, label: 'Waypoints', path: '/admin/waypoint-logger' },
+        { icon: <LayoutDashboard className="w-5 h-5" />, label: 'Dashboard', path: '/admin' },
+        { icon: <Users className="w-5 h-5" />, label: 'Users', path: '/admin/users' },
+        { icon: <MapPin className="w-5 h-5" />, label: 'Waypoints', path: '/admin/waypoint-logger' },
       ]
     : [
-        { icon: <HomeIcon />, label: 'Home', path: '/dashboard' },
-        { icon: <CompassIcon />, label: 'Explore', path: '/explore' },
-        { icon: <UsersIcon />, label: 'People', path: '/people' },
-        { icon: <GiftIcon />, label: 'Redeem', path: '/redeem' },
-        { icon: <UserIcon />, label: 'Profile', path: '/profile' },
+        { icon: <Home className="w-5 h-5" />, label: 'Home', path: '/dashboard' },
+        { icon: <Compass className="w-5 h-5" />, label: 'Explore', path: '/explore' },
+        { icon: <Users className="w-5 h-5" />, label: 'People', path: '/people' },
+        { icon: <Gift className="w-5 h-5" />, label: 'Redeem', path: '/redeem' },
+        { icon: <User className="w-5 h-5" />, label: 'Profile', path: '/profile' },
       ];
 
   const isExplore = location.pathname === '/explore';
@@ -51,7 +51,7 @@ const AppLayout = () => {
           // Users sign out from their Profile page instead — their dock slot
           // is the AR-points Redeem section.
           ...(isAdmin
-            ? [{ icon: <LogoutIcon />, label: 'Sign out', onClick: () => setShowSignOutConfirm(true), disabled: isLoading }]
+            ? [{ icon: <LogOut className="w-5 h-5" />, label: 'Sign out', onClick: () => setShowSignOutConfirm(true), disabled: isLoading }]
             : []),
         ]}
       />}

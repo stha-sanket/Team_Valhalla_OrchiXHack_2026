@@ -10,6 +10,7 @@
     "seed:admin": "tsx src/scripts/seedAdmin.ts",
     "seed:badge": "tsx src/scripts/seedBadge.ts",
     "seed:orchid": "tsx src/scripts/seedOrchid.ts",
+    "seed:pashupati": "tsx src/scripts/seedPashupati.ts",
     "seed:quiz": "tsx src/scripts/seedQuiz.ts"
   },
   "dependencies": {

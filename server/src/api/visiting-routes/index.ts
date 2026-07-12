@@ -18,6 +18,9 @@ export const meta: RouteMeta = {
         description: 'Entrance to the courtyard',
         type: 'start',
         coordinates: { lat: '27.7110', long: '85.3243' },
+        media: 'https://example.com/photo.png',
+        video: 'https://example.com/story.mp4',
+        model3d: 'https://example.com/model.glb',
         index: 0,
       },
     },
@@ -39,10 +42,10 @@ export const GET = async (req: Request, res: Response) => {
 
 export const POST = async (req: Request, res: Response) => {
   if ((req as any).user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
-  const { visiting_place_id, name, description, type, coordinates, media, index } = req.body;
+  const { visiting_place_id, name, description, type, coordinates, media, video, model3d, index } = req.body;
   if (!visiting_place_id || !name || !description || !type || !coordinates || index === undefined) {
     return res.status(400).json({ error: 'visiting_place_id, name, description, type, coordinates and index are required' });
   }
-  const route = await VisitingRoutes.create({ visiting_place_id, name, description, type, coordinates, media, index });
+  const route = await VisitingRoutes.create({ visiting_place_id, name, description, type, coordinates, media, video, model3d, index });
   res.status(201).json({ message: 'Route point created', route });
 };

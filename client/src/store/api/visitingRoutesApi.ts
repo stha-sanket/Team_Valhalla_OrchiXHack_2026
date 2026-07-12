@@ -9,7 +9,12 @@ export interface VisitingRoute {
   description: string;
   type: RouteWaypointType;
   coordinates: { lat: string; long: string };
+  /** Photo URL for the point. */
   media?: string;
+  /** Video URL — only used by milestone and side_quest points. */
+  video?: string;
+  /** Interactive 3D model URL (.glb) — only used by node points. */
+  model3d?: string;
   index: number;
   visiting_place_id: string;
 }
@@ -20,6 +25,8 @@ export interface BulkRoutePoint {
   type: RouteWaypointType;
   coordinates: { lat: string; long: string };
   media?: string;
+  video?: string;
+  model3d?: string;
   index: number;
 }
 
@@ -49,4 +56,4 @@ export const visitingRoutesApi = createApi({
   }),
 });
 
-export const { useGetVisitingRoutesQuery, useBulkCreateVisitingRoutesMutation } = visitingRoutesApi;
+export const { useGetVisitingRoutesQuery, useLazyGetVisitingRoutesQuery, useBulkCreateVisitingRoutesMutation } = visitingRoutesApi;

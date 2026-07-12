@@ -9,7 +9,12 @@ export interface RouteDocument {
   description: string;
   name: string;
   visiting_place_id: string;
+  /** Photo URL for the point — every point should have one. */
   media: string;
+  /** Video URL — only used by milestone and side_quest points. */
+  video?: string;
+  /** Interactive 3D model URL (.glb) — only used by node points. */
+  model3d?: string;
   index: number;
 }
 
@@ -24,6 +29,8 @@ const VisitingRoutes = defineModel<RouteDocument>("VisitingRoutes", {
   name: { type: "string", required: true },
   visiting_place_id: { type: "string", required: true },
   media: { type: "string", required: false },
+  video: { type: "string", required: false },
+  model3d: { type: "string", required: false },
   index: { type: "number", required: true },
 });
 

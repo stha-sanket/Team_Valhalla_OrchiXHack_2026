@@ -71,6 +71,36 @@ const QUIZZES: { placeName: string; questions: QuizQuestion[] }[] = [
       },
     ],
   },
+  {
+    placeName: 'Pashupatinath Temple',
+    questions: [
+      {
+        question: 'What color is Gate no. 3?',
+        options: ['Red', 'Green', 'Yellow', 'Blue'],
+        correct_index: 2,
+      },
+      {
+        question: 'What building is located on the right side straight from the main gate?',
+        options: ['Nabil Bank', 'Nepal sbi bank', 'Everest Bank', 'Himalayan Bank'],
+        correct_index: 1,
+      },
+      {
+        question: 'What is featured on the yellow coloured main Pashupatinath gate?',
+        options: ['Sculpture of Shiva', 'Sculpture of Vishnu', 'Sculpture of Buddha', 'Sculpture of Ganesh'],
+        correct_index: 0,
+      },
+      {
+        question: 'Which checkpoint is designated as the end of the route?',
+        options: ['Nepal sbi bank', 'Gate no. 3', 'Main gate', 'Main temple'],
+        correct_index: 3,
+      },
+      {
+        question: 'What are you not allowed to take to the main temple?',
+        options: ['Water bottle', 'Bag', 'Phone', 'Shoes'],
+        correct_index: 2,
+      },
+    ],
+  },
 ];
 
 async function main() {

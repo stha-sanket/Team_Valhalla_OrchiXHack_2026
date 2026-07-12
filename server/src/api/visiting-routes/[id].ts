@@ -11,7 +11,7 @@ export const meta: RouteMeta = {
   },
   PUT: {
     description: 'Update a route point by ID (admin only).',
-    request: { params: { id: '64f0...' }, body: { name: 'Courtyard door', description: 'Updated', type: 'start', coordinates: { lat: '27.7110', long: '85.3243' }, index: 0 } },
+    request: { params: { id: '64f0...' }, body: { name: 'Courtyard door', description: 'Updated', type: 'start', coordinates: { lat: '27.7110', long: '85.3243' }, media: 'https://example.com/photo.png', video: 'https://example.com/story.mp4', model3d: 'https://example.com/model.glb', index: 0 } },
     response: { status: 200, body: { message: 'Route point updated', route: {} } },
   },
   DELETE: {
@@ -31,8 +31,8 @@ export const GET = async (req: Request, res: Response) => {
 
 export const PUT = async (req: Request, res: Response) => {
   if ((req as any).user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
-  const { name, description, type, coordinates, media, index } = req.body;
-  const updated = await VisitingRoutes.update(req.params.id, { name, description, type, coordinates, media, index });
+  const { name, description, type, coordinates, media, video, model3d, index } = req.body;
+  const updated = await VisitingRoutes.update(req.params.id, { name, description, type, coordinates, media, video, model3d, index });
   if (!updated) return res.status(404).json({ error: 'Route point not found' });
   res.json({ message: 'Route point updated', route: updated });
 };
